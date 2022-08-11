@@ -21,5 +21,8 @@ class RSLinearRegression(torch.nn.Module):
     w = self.weight * self.shadow_weight
     return x.mm(w)
 
-  def get_composed_weight(self):
+  def get_weights(self):
+    return self.weight.cpu().detach().numpy() * self.shadow_weight.cpu().detach().numpy()
+
+  def get_redundant_weights(self):
     return self.weight.cpu().detach().numpy(), self.shadow_weight.cpu().detach().numpy()

@@ -18,8 +18,9 @@ parser.add_argument('--predictor_dim', type=int, default=100)
 parser.add_argument('--respond_dim', type=int, default=1)
 parser.add_argument('--batch_size', type=int, default=1000)
 parser.add_argument('--noisy_variance', type=float, default=0.1)
-parser.add_argument('--lr', type=float, default=1e-2)
-parser.add_argument('--epoch', type=int, default=5000)
+parser.add_argument('--lr_rs', type=float, default=1e-2)
+parser.add_argument('--lr_l1', type=float, default=1e-3)
+parser.add_argument('--epoch', type=int, default=10000)
 parser.add_argument('--device', type=str, default='cuda:0')
 parser.add_argument('--num_alpha', type=int, default=20)
 parser.add_argument('--output_folder', type=str, default='output')
@@ -47,42 +48,47 @@ if __name__ == "__main__":
     # rs_weights_sorted = defaultdict(list)
 
     weights = dict()
-    metrics = defaultdict(list)
+    metrics_output = defaultdict(list)
+    metrics_trajectory = dict()
 
     for alpha in alpha_range.tolist():
         print('alpha = ', alpha)
-        metrics['alpha'].append(alpha)
+        metrics_output['alpha'].append(alpha)
 
         fetch = run_lasso(alpha, x, y)
         weights[f'lasso:alpha={alpha}'] = fetch['weights']
         eval_fetch = eval_over_datasets(x, y, fetch['weights'], alpha)
         for k in eval_fetch:
-            metrics[f'lasso:{k}'].append(eval_fetch[k])
+            metrics_output[f'lasso:{k}'].append(eval_fetch[k])
         print('==> (baseline) lasso', eval_fetch)
 
         fetch = run_l1_regression(alpha, x, y,
                                   args.batch_size,
-                                  args.lr,
+                                  args.lr_l1,
                                   args.epoch,
                                   args.device)
         weights[f'l1:alpha={alpha}'] = fetch['weights']
+        metrics_trajectory[f'l1:alpha={alpha}'] = fetch['metric_list']
         eval_fetch = eval_over_datasets(x, y, fetch['weights'], alpha)
         for k in eval_fetch:
-            metrics[f'l1:{k}'].append(eval_fetch[k])
+            metrics_output[f'l1:{k}'].append(eval_fetch[k])
         print('==> (baseline) l1', eval_fetch)
 
         fetch = run_redundent_sparse_regression(alpha, x, y,
                                                 args.batch_size,
-                                                args.lr,
+                                                args.lr_rs,
                                                 args.epoch,
                                                 args.device)
-        weights[f'rs-alpha={alpha}'] = fetch['weights']
+        weights[f'rs:alpha={alpha}'] = fetch['weights']
+        metrics_trajectory[f'rs:alpha={alpha}'] = fetch['metric_list']
         eval_fetch = eval_over_datasets(x, y, fetch['weights'], alpha)
         for k in eval_fetch:
-            metrics[f'rs:{k}'].append(eval_fetch[k])
+            metrics_output[f'rs:{k}'].append(eval_fetch[k])
         print('==> (redundant) rs', eval_fetch)
 
-    pd.DataFrame(data=metrics).to_csv(
+    pd.DataFrame(data=metrics_output).to_csv(
         os.path.join(args.output_folder, 'metrics.csv'), index=False)
     with open(os.path.join(args.output_folder, 'all_weights_dict.pickle'), 'wb') as f:
         pickle.dump(weights, f)
+    with open(os.path.join(args.output_folder, 'metrics_traject.pickle'), 'wb') as f:
+        pickle.dump(metrics_trajectory, f)
