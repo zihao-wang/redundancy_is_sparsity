@@ -1,4 +1,5 @@
 import time
+from unittest.mock import patch
 
 import torch
 from tqdm import trange
@@ -7,9 +8,50 @@ from sklearn.linear_model import Lasso
 from models import RSLinearRegression, LinearRegression
 from utils import eval_over_datasets
 
-def sgd_duplication_regression(alpha, x, y, lr, batch_size, epoch, device):
+
+class EarlyEscapeZeroRate:
+    def __init__(self, patience, beta=0.99) -> None:
+        self.patience = patience
+        self.beta = beta
+        self.past_zero_rate = -1
+
+    def check_escape(self, zero_rate):
+        self.past_zero_rate = self.beta * self.past_zero_rate + (1-self.beta) * zero_rate
+
+        if self.past_zero_rate >= zero_rate:
+            return True
+        else:
+            return False
+
+
+def run_lasso(alpha, x, y):
     _, predictor_dim = x.shape
     _, respond_dim = y.shape
+
+    lasso_regressor = Lasso(alpha=alpha)
+
+    t = time.time()
+    lasso_regressor.fit(x, y)
+    t = time.time() - t
+
+    _coef = lasso_regressor.coef_
+    weights = _coef.reshape((predictor_dim, respond_dim))
+
+    return {'time': t,
+            'weights': weights}
+
+
+def run_rs_regression(alpha, x, y,
+                                    optname='SGD',
+                                    epoch=200,
+                                    batch_size=512,
+                                    lr=1e-4,
+                                    device='cuda:0',
+                                    loss_requirement=0,
+                                    eval_every_epoch=True):
+    _, predictor_dim = x.shape
+    _, respond_dim = y.shape
+
     x_tensor = torch.tensor(x, dtype=torch.float32, device=device)
     y_tensor = torch.tensor(y, dtype=torch.float32, device=device)
     dataset = torch.utils.data.TensorDataset(x_tensor, y_tensor)
@@ -19,111 +61,107 @@ def sgd_duplication_regression(alpha, x, y, lr, batch_size, epoch, device):
 
     # using weight decay for L2 regularization
     model.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=alpha)
+    optimizer = getattr(torch.optim, optname)(
+        model.parameters(), lr=lr, weight_decay=alpha)
+
+    early_escape_zero_rate = EarlyEscapeZeroRate(100)
 
     metric_list = []
-    t = trange(epoch, desc="redundancy-sparse regression")
-    for e in t:
+
+    t = time.time()
+    for e in range(epoch):
+        metric = {}
         total_loss = 0
         for x_batch, y_batch in dataloader:
             y_pred = model(x_batch)
-            loss = torch.sum((y_batch - y_pred)** 2) / 2 / y_pred.size(0)
-            # reg = torch.norm(model.weight)**2 + torch.norm(model.shadow_weight)**2
-            # loss += reg * alpha
+            l1reg = model.L1_reg()
+            loss = torch.sum((y_batch - y_pred) ** 2) / 2 / y_pred.size(0)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            total_loss += loss.item()
-        metric = eval_over_datasets(x, y, model.get_weights(), alpha)
-        metric['epoch'] = e+1
-        metric_list.append(metric)
-        t.set_postfix(metric)
-    return model, metric_list
+            total_loss += loss.item() + alpha * l1reg.item()
 
-def sgd_L1_regression(alpha, x, y, lr, batch_size, epoch, device):
+        epoch_loss = total_loss / len(dataloader)
+        metric['epoch_loss'] = epoch_loss
+        metric['epoch'] = e+1
+        if eval_every_epoch:
+            m = eval_over_datasets(x, y, model.get_weights(), alpha)
+            metric.update(m)
+        metric_list.append(metric)
+
+        if early_escape_zero_rate.check_escape(metric['zero_rate12']):
+            break
+
+        if epoch_loss < loss_requirement:
+            break
+
+    t = time.time() - t
+
+    weights = model.get_weights().reshape([predictor_dim, respond_dim])
+
+    return {'time': t,
+            'weights': weights,
+            'metric_list': metric_list}
+
+
+def run_l1_regression(alpha, x, y,
+                      optname='SGD',
+                      epoch=200,
+                      batch_size=512,
+                      lr=1e-4,
+                      device='cuda:0',
+                      loss_requirement=0,
+                      eval_every_epoch=True):
     _, predictor_dim = x.shape
     _, respond_dim = y.shape
+
     x_tensor = torch.tensor(x, dtype=torch.float32, device=device)
-    x_tensor = torch.tensor(y, dtype=torch.float32, device=device)
-    dataset = torch.utils.data.TensorDataset(x_tensor, x_tensor)
+    y_tensor = torch.tensor(y, dtype=torch.float32, device=device)
+    dataset = torch.utils.data.TensorDataset(x_tensor, y_tensor)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size)
     model = LinearRegression(predictor_dim=predictor_dim,
                              respond_dim=respond_dim)
 
     # using L1 regularization
     model.to(device)
-    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+    optimizer = getattr(torch.optim, optname)(
+        model.parameters(), lr=lr)
+
+    early_escape_zero_rate = EarlyEscapeZeroRate(100)
 
     metric_list = []
-    t = trange(epoch, desc="L1 reg regression")
-    for e in t:
+
+    t = time.time()
+    for e in range(epoch):
+        metric = {}
         total_loss = 0
         for x_batch, y_batch in dataloader:
             y_pred = model(x_batch)
-            loss = torch.sum((y_batch - y_pred)** 2) / 2 / y_pred.size(0)
-            reg = torch.norm(model.weight, p=1)
-            loss = loss + reg * alpha
+            l1reg = model.L1_reg()
+            loss = torch.sum((y_batch - y_pred) ** 2) / 2 / y_pred.size(0) + alpha * l1reg
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
-        metric = eval_over_datasets(x, y, model.get_weights(), alpha)
+
+        epoch_loss = total_loss / len(dataloader)
+        metric['epoch_loss'] = epoch_loss
         metric['epoch'] = e+1
+        if eval_every_epoch:
+            m = eval_over_datasets(x, y, model.get_weights(), alpha)
+            metric.update(m)
         metric_list.append(metric)
-        t.set_postfix(metric)
-    return model, metric_list
 
+        if early_escape_zero_rate.check_escape(metric['zero_rate12']):
+            break
 
-def run_lasso(alpha, x, y):
-  _, predictor_dim = x.shape
-  _, respond_dim = y.shape
+        if epoch_loss < loss_requirement:
+            break
 
-  lasso_regressor = Lasso(alpha=alpha)
+    t = time.time() - t
 
-  t = time.time()
-  lasso_regressor.fit(x, y)
-  t = time.time() - t
+    weights = model.get_weights().reshape((predictor_dim, respond_dim))
 
-  _coef = lasso_regressor.coef_
-  weights = _coef.reshape((predictor_dim, respond_dim))
-
-  return {'time': t,
-          'weights': weights}
-
-def run_redundent_sparse_regression(alpha, x, y,
-                          batch_size=512, lr=1e-4, epoch=200, device='cuda:0'):
-  num_samples, predictor_dim = x.shape
-  _, respond_dim = y.shape
-
-  t = time.time()
-  rs_regressor, metric_list = sgd_duplication_regression(alpha, x, y,
-                                            batch_size=batch_size,
-                                            lr=lr,
-                                            epoch=epoch,
-                                            device=device)
-  t = time.time() - t
-  weights = rs_regressor.get_weights()
-
-  return {'time': t,
-          'weights': weights,
-          'metric_list': metric_list}
-
-def run_l1_regression(alpha, x, y,
-                      batch_size=512, lr=1e-4, epoch=200, device='cuda:0'):
-  num_samples, predictor_dim = x.shape
-  _, respond_dim = y.shape
-
-  t = time.time()
-  rs_regressor, metric_list = sgd_L1_regression(alpha, x, y,
-                                   batch_size=batch_size,
-                                   lr=lr,
-                                   epoch=epoch,
-                                   device=device)
-  t = time.time() - t
-
-  weights = rs_regressor.get_weights()
-  weights = weights.reshape((predictor_dim, respond_dim))
-
-  return {'time': t,
-          'weights': weights,
-          'metric_list': metric_list}
+    return {'time': t,
+            'weights': weights,
+            'metric_list': metric_list}

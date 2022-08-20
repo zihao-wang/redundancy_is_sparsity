@@ -1,6 +1,7 @@
 import numpy as np
 
-def isotropic_predictor_data(num_samples, predictor_dim, respond_dim, noisy_variance, sparse=0):
+def isotropic_predictor_data(num_samples, predictor_dim, respond_dim, noisy_variance, sparse=0, seed=666):
+    np.random.seed(seed)
     x = np.random.randn(num_samples, predictor_dim)
 
     trans = np.random.randn(predictor_dim, respond_dim)
