@@ -65,7 +65,12 @@ if __name__ == "__main__":
         rs_eval_fetch = eval_over_datasets(x, y, rs_fetch['weights'], alpha)
         for k in rs_eval_fetch:
             data[f'rs:{k}'].append(rs_eval_fetch[k])
-        data['rs:time'].append(lasso_fetch['time'])
+        data['rs:time'].append(rs_fetch['time'])
+
+        bpm = rs_fetch['bypass_metric']
+
+        for k in bpm:
+            data[f'rs:bps:{k}'].append(bpm[k])
 
     pd.DataFrame(data=data).to_csv(
         os.path.join(args.output_folder, 'metrics.csv'), index=False)

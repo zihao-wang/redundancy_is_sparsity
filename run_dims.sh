@@ -1,19 +1,51 @@
+rm -rf output/HighDimLinearRegression
+
+respond_dim=1
+
 for predictor_dim in 1000 10000 100000
 do
-    for respond_dim in 1 1000
+    echo $predictor_dim $respond_dim
+    python3 high_dim_regression.py \
+        --device=cuda:1 \
+        --optname=Adam \
+        --lr=1e-1 \
+        --predictor_dim=$predictor_dim \
+        --respond_dim=$respond_dim \
+        --epoch=10000 \
+        --num_alpha=5 \
+        --output_folder=output/HighDimLinearRegression/${predictor_dim}_${respond_dim}
+done
+
+for predictor_dim in 10000 100000
+do
+    echo $predictor_dim $respond_dim
+    python3 high_dim_regression.py \
+        --device=cuda:1 \
+        --optname=Adam \
+        --lr=1e-1 \
+        --predictor_dim=$predictor_dim \
+        --respond_dim=$respond_dim \
+        --epoch=10000 \
+        --num_alpha=5 \
+        --output_folder=output/HighDimLinearRegression/${predictor_dim}_${respond_dim}
+done
+
+
+for predictor_dim in 100000
+do
+    for respond_dim in 1000
     do
         python3 high_dim_regression.py \
             --device=cuda:1 \
             --optname=SGD \
-            --lr=1e-2 \
+            --lr=1e-1 \
             --predictor_dim=$predictor_dim \
             --respond_dim=$respond_dim \
             --epoch=10000 \
             --num_alpha=5 \
-            --output_folder=output/HighDimLinearRegression/${predictor_dim}_${respond_dim}_${reg}
+            --output_folder=output/HighDimLinearRegression/${predictor_dim}_${respond_dim}
     done
 done
-
 
 
 for predictor_dim in 1000000 10000000
@@ -28,6 +60,6 @@ do
             --respond_dim=$respond_dim \
             --epoch=10000 \
             --num_alpha=5 \
-            --output_folder=output/HighDimLinearRegression/${predictor_dim}_${respond_dim}_${reg}
+            --output_folder=output/HighDimLinearRegression/${predictor_dim}_${respond_dim}
     done
 done

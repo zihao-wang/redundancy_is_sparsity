@@ -28,7 +28,7 @@ def run_lasso(alpha, x, y):
     _, predictor_dim = x.shape
     _, respond_dim = y.shape
 
-    lasso_regressor = Lasso(alpha=alpha)
+    lasso_regressor = Lasso(alpha=alpha, max_iter=1000000)
 
     t = time.time()
     lasso_regressor.fit(x, y)
@@ -42,13 +42,13 @@ def run_lasso(alpha, x, y):
 
 
 def run_rs_regression(alpha, x, y,
-                                    optname='SGD',
-                                    epoch=200,
-                                    batch_size=512,
-                                    lr=1e-4,
-                                    device='cuda:0',
-                                    loss_requirement=0,
-                                    eval_every_epoch=True):
+                      optname='SGD',
+                      epoch=200,
+                      batch_size=512,
+                      lr=1e-4,
+                      device='cuda:0',
+                      loss_requirement=0,
+                      eval_every_epoch=True):
     _, predictor_dim = x.shape
     _, respond_dim = y.shape
 
@@ -69,31 +69,42 @@ def run_rs_regression(alpha, x, y,
     metric_list = []
 
     t = time.time()
-    for e in range(epoch):
-        metric = {}
-        total_loss = 0
-        for x_batch, y_batch in dataloader:
-            y_pred = model(x_batch)
-            l1reg = model.L1_reg()
-            loss = torch.sum((y_batch - y_pred) ** 2) / 2 / y_pred.size(0)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            total_loss += loss.item() + alpha * l1reg.item()
+    bypass_metric = {'time': -1, 'mse': -1, 'l1': -1, 'total': -1,
+                     'zero_rate3': -1, 'zero_rate6': -1, 'zero_rate9': -1, 'zero_rate12': -1}
+    with trange(epoch) as titer:
+        for e in titer:
+            metric = {}
+            total_loss = 0
+            for x_batch, y_batch in dataloader:
+                y_pred = model(x_batch)
+                l1reg = model.L1_reg()
+                loss = torch.sum((y_batch - y_pred) ** 2) / 2 / y_pred.size(0)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item() + alpha * l1reg.item()
 
-        epoch_loss = total_loss / len(dataloader)
-        metric['epoch_loss'] = epoch_loss
-        metric['epoch'] = e+1
-        if eval_every_epoch:
-            m = eval_over_datasets(x, y, model.get_weights(), alpha)
-            metric.update(m)
-        metric_list.append(metric)
+            epoch_loss = total_loss / len(dataloader)
+            metric['epoch_loss'] = epoch_loss
+            metric['epoch'] = e+1
+            if eval_every_epoch:
+                m = eval_over_datasets(x, y, model.get_weights(), alpha)
+                metric.update(m)
 
-        if early_escape_zero_rate.check_escape(metric['zero_rate12']):
-            break
+                if early_escape_zero_rate.check_escape(metric['zero_rate12']):
+                    break
 
-        if epoch_loss < loss_requirement:
-            break
+            metric_list.append(metric)
+            if epoch_loss < loss_requirement and bypass_metric['time'] < 0:
+                bypass_metric = {}
+                bypass_metric['time'] = time.time() - t
+                m = eval_over_datasets(x, y, model.get_weights(), alpha)
+                bypass_metric.update(m)
+                break
+
+            postfix = {'loss_req': loss_requirement}
+            postfix.update(metric)
+            titer.set_postfix(postfix)
 
     t = time.time() - t
 
@@ -101,6 +112,7 @@ def run_rs_regression(alpha, x, y,
 
     return {'time': t,
             'weights': weights,
+            'bypass_metric': bypass_metric,
             'metric_list': metric_list}
 
 
@@ -150,10 +162,10 @@ def run_l1_regression(alpha, x, y,
         if eval_every_epoch:
             m = eval_over_datasets(x, y, model.get_weights(), alpha)
             metric.update(m)
-        metric_list.append(metric)
+            if early_escape_zero_rate.check_escape(metric['zero_rate12']):
+                break
 
-        if early_escape_zero_rate.check_escape(metric['zero_rate12']):
-            break
+        metric_list.append(metric)
 
         if epoch_loss < loss_requirement:
             break
