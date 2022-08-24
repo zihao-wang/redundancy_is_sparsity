@@ -1,9 +1,8 @@
 import time
-from unittest.mock import patch
 
 import torch
 from tqdm import trange
-from sklearn.linear_model import Lasso
+from sklearn.linear_model import Lasso, LassoLars
 
 from models import RSLinearRegression, LinearRegression
 from utils import eval_over_datasets
@@ -16,7 +15,8 @@ class EarlyEscapeZeroRate:
         self.past_zero_rate = -1
 
     def check_escape(self, zero_rate):
-        self.past_zero_rate = self.beta * self.past_zero_rate + (1-self.beta) * zero_rate
+        self.past_zero_rate = self.beta * \
+            self.past_zero_rate + (1-self.beta) * zero_rate
 
         if self.past_zero_rate >= zero_rate:
             return True
@@ -24,11 +24,14 @@ class EarlyEscapeZeroRate:
             return False
 
 
-def run_lasso(alpha, x, y):
+def run_lasso(alpha, x, y, method='default'):
     _, predictor_dim = x.shape
     _, respond_dim = y.shape
 
-    lasso_regressor = Lasso(alpha=alpha, max_iter=1000000)
+    if method == 'LARS':
+        lasso_regressor = LassoLars(alpha=alpha, normalize=False, max_iter=100000)
+    else:
+        lasso_regressor = Lasso(alpha=alpha, max_iter=100000)
 
     t = time.time()
     lasso_regressor.fit(x, y)
@@ -47,8 +50,10 @@ def run_rs_regression(alpha, x, y,
                       batch_size=512,
                       lr=1e-4,
                       device='cuda:0',
-                      loss_requirement=0,
-                      eval_every_epoch=True):
+                      loss_less_than=0,
+                      zero_rate_greater_than=1,
+                      zero_rate_ratios=[0.5, 0.75, 0.9, 0.99, 0.999, 1, 1.01],
+                      eval_every_epoch=100):
     _, predictor_dim = x.shape
     _, respond_dim = y.shape
 
@@ -69,8 +74,6 @@ def run_rs_regression(alpha, x, y,
     metric_list = []
 
     t = time.time()
-    bypass_metric = {'time': -1, 'mse': -1, 'l1': -1, 'total': -1,
-                     'zero_rate3': -1, 'zero_rate6': -1, 'zero_rate9': -1, 'zero_rate12': -1}
     with trange(epoch) as titer:
         for e in titer:
             metric = {}
@@ -79,6 +82,7 @@ def run_rs_regression(alpha, x, y,
                 y_pred = model(x_batch)
                 l1reg = model.L1_reg()
                 loss = torch.sum((y_batch - y_pred) ** 2) / 2 / y_pred.size(0)
+                assert not torch.isnan(loss)
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
@@ -87,24 +91,39 @@ def run_rs_regression(alpha, x, y,
             epoch_loss = total_loss / len(dataloader)
             metric['epoch_loss'] = epoch_loss
             metric['epoch'] = e+1
-            if eval_every_epoch:
+            metric['time'] = time.time() - t
+
+            if (e+1) % eval_every_epoch == 0:
                 m = eval_over_datasets(x, y, model.get_weights(), alpha)
                 metric.update(m)
+
+                should_early_stop = True
+
+                if epoch_loss < loss_less_than:
+                    metric['loss_smaller_than_threshold'] = True
+                    should_early_stop = should_early_stop and True
+                else:
+                    metric['loss_smaller_than_threshold'] = False
+                    should_early_stop = should_early_stop and False
+
+                for zrr in zero_rate_ratios:
+                    if metric['zero_rate6'] >= zero_rate_greater_than * zrr:
+                        metric[f'zero_rate_greater_than_threshold:{zrr}'] = True
+                        should_early_stop = should_early_stop and True
+                    else:
+                        metric[f'zero_rate_greater_than_threshold:{zrr}'] = False
+                        should_early_stop = should_early_stop and False
+
+                metric_list.append(metric)
+
+                if should_early_stop:
+                    break
 
                 if early_escape_zero_rate.check_escape(metric['zero_rate12']):
                     break
 
-            metric_list.append(metric)
-            if epoch_loss < loss_requirement and bypass_metric['time'] < 0:
-                bypass_metric = {}
-                bypass_metric['time'] = time.time() - t
-                m = eval_over_datasets(x, y, model.get_weights(), alpha)
-                bypass_metric.update(m)
-                break
-
-            postfix = {'loss_req': loss_requirement}
-            postfix.update(metric)
-            titer.set_postfix(postfix)
+            if metric_list:
+                titer.set_postfix(metric_list[-1])
 
     t = time.time() - t
 
@@ -112,7 +131,6 @@ def run_rs_regression(alpha, x, y,
 
     return {'time': t,
             'weights': weights,
-            'bypass_metric': bypass_metric,
             'metric_list': metric_list}
 
 
@@ -150,7 +168,8 @@ def run_l1_regression(alpha, x, y,
         for x_batch, y_batch in dataloader:
             y_pred = model(x_batch)
             l1reg = model.L1_reg()
-            loss = torch.sum((y_batch - y_pred) ** 2) / 2 / y_pred.size(0) + alpha * l1reg
+            loss = torch.sum((y_batch - y_pred) ** 2) / 2 / \
+                y_pred.size(0) + alpha * l1reg
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()

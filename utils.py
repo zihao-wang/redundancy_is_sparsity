@@ -13,8 +13,9 @@ def eval_over_datasets(x, y, trans, alpha):
     zero_rate6 = (np.abs(trans) < 1e-6).mean()
     zero_rate9 = (np.abs(trans) < 1e-9).mean()
     zero_rate12 = (np.abs(trans) < 1e-12).mean()
-    return {'mse': mse, 'l1': l1, 'total': mse + l1 * alpha,
+    ret = {'mse': mse, 'l1': l1, 'total': mse + l1 * alpha,
             'zero_rate3': zero_rate3,
             'zero_rate6': zero_rate6,
             'zero_rate9': zero_rate9,
             'zero_rate12': zero_rate12}
+    return {k: float(v) for k, v in ret.items()}

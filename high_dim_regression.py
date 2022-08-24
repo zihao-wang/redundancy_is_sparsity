@@ -1,6 +1,7 @@
 import argparse
 import os
 from collections import defaultdict
+import json
 
 import numpy as np
 np.set_printoptions(precision=8, suppress=True)
@@ -22,55 +23,71 @@ parser.add_argument('--lr', type=float, default=1e-2)
 parser.add_argument('--epoch', type=int, default=10000)
 parser.add_argument('--device', type=str, default='cuda:0')
 parser.add_argument('--num_alpha', type=int, default=5)
-parser.add_argument('--output_folder', type=str, default='output')
+
+
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    os.makedirs(args.output_folder, exist_ok=True)
+    output_folder = os.path.join("output/HighDimLinearRegression",
+                                 f"{args.predictor_dim}_{args.respond_dim}")
+    os.makedirs(output_folder, exist_ok=True)
 
     (x, y), trans = isotropic_predictor_data(args.num_samples,
                                              args.predictor_dim,
                                              args.respond_dim,
-                                             args.noisy_variance)
+                                             args.noisy_variance,
+                                             seed=666)
 
     # manually set the alpha thresholding
-    # adding a small value to ensure the soft threshold
-    non_zero_coefficient = trans[np.nonzero(trans)] + 1e-3
-    alpha_range = np.abs(non_zero_coefficient).ravel().tolist()
-    alpha_range.sort()
+    alpha_range = np.arange(args.num_alpha) + 1
 
-    alpha_range = (np.arange(args.num_alpha) + 1) / args.num_alpha \
-                  * np.max(np.abs(non_zero_coefficient)) * 1.01
-
+    # run lasso if there is no lasso record
+    lasso_file = os.path.join(output_folder, 'lars_metrics.csv')
+    # re run the lasso
+    # if os.path.exists(lasso_file):
+        # print(f"lasso file {lasso_file} already found")
+        # lasso_df = pd.read_csv(lasso_file)
+    # else:
+    print(f"lasso file {lasso_file} not found")
     data = defaultdict(list)
-
     for alpha in alpha_range.tolist():
-        print('alpha = ', alpha)
         data['alpha'].append(alpha)
 
-        lasso_fetch = run_lasso(alpha, x, y)
+        lasso_fetch = run_lasso(alpha, x, y, method='LARS')
+        data['time'].append(lasso_fetch['time'])
         lasso_eval_fetch = eval_over_datasets(x, y, lasso_fetch['weights'], alpha)
         for k in lasso_eval_fetch:
-            data[f'lasso:{k}'].append(lasso_eval_fetch[k])
-        data['lasso:time'].append(lasso_fetch['time'])
+            data[k].append(lasso_eval_fetch[k])
+    lasso_df = pd.DataFrame(data)
+    lasso_df.to_csv(lasso_file, index=False)
+    print(lasso_df.to_string())
 
+    lasso_file = os.path.join(output_folder, 'lasso_metrics.csv')
+    lasso_df = pd.read_csv(lasso_file)
+
+    # run rs
+    data = defaultdict(list)
+    for alpha in alpha_range.tolist():
+        data['alpha'].append(alpha)
+        lasso_record = lasso_df[lasso_df.alpha == alpha].to_dict('list')
+        target_loss = lasso_record['total'][0]
+        target_zero_rate = lasso_record['zero_rate12'][0]
+        print(lasso_record)
         rs_fetch = run_rs_regression(alpha, x, y,
-                                  args.optname,
-                                  args.epoch,
-                                  args.batch_size,
-                                  args.lr,
-                                  args.device,
-                                  loss_requirement=lasso_eval_fetch['total'],
-                                  eval_every_epoch=False)
-        rs_eval_fetch = eval_over_datasets(x, y, rs_fetch['weights'], alpha)
-        for k in rs_eval_fetch:
-            data[f'rs:{k}'].append(rs_eval_fetch[k])
-        data['rs:time'].append(rs_fetch['time'])
+                                     args.optname,
+                                     args.epoch,
+                                     args.batch_size,
+                                     args.lr,
+                                     args.device,
+                                     loss_less_than=target_loss,
+                                     zero_rate_greater_than=target_zero_rate,
+                                     zero_rate_ratios=[0.5, 0.75, 0.9, 0.99, 0.999, 1],
+                                     eval_every_epoch=100)
 
-        bpm = rs_fetch['bypass_metric']
+        filename = os.path.join(
+            output_folder,
+            f'{alpha}-rs_metrics_optname_{args.optname}_lr_{args.lr}')
 
-        for k in bpm:
-            data[f'rs:bps:{k}'].append(bpm[k])
-
-    pd.DataFrame(data=data).to_csv(
-        os.path.join(args.output_folder, 'metrics.csv'), index=False)
+        with open(filename, 'wt') as f:
+            for metric in rs_fetch['metric_list']:
+                f.write(json.dumps(metric) + '\n')
