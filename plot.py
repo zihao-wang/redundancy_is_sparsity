@@ -7,11 +7,11 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--plot_folder", type=str)
+parser.add_argument("--plot_folder", type=str, default='output/plots/with_alpha')
 
 marker_dict = {'RS': 's', 'L1': '+'}
 color_dict = {'zero_rate6': 'tab:blue',
-              'zero_rate12':'tab:orange',}
+              'zero_rate12': 'tab:orange', }
 
 
 def plot_sparse_ratio_vs_alpha(csv_file_dict, key_dict, fig_folder):
@@ -46,7 +46,7 @@ def plot_sparse_ratio_vs_alpha(csv_file_dict, key_dict, fig_folder):
     df_dict = {k: pd.read_csv(csv)
                for k, csv in csv_file_dict.items()}
 
-    plt.figure(figsize=(5,4))
+    plt.figure(figsize=(5, 4))
     for label in df_dict:
         df = df_dict[label]
         prefix = label.split(':')[0]
@@ -56,7 +56,7 @@ def plot_sparse_ratio_vs_alpha(csv_file_dict, key_dict, fig_folder):
                     if 'Lasso' in label:
                         if '12' in key:
                             plt.plot(df['alpha'], df[column], label='Lasso',
-                                      **format_dict['lasso'])
+                                     **format_dict['lasso'])
                     else:
                         plt.scatter(df['alpha'], df[column],
                                     label=f'{prefix}({key_dict[key]})',
@@ -108,11 +108,11 @@ def plot_training_trajectory(pickle_file_dict, fig_folder):
     for k in metric_trajectory_dict:
         metric_trajectory = metric_trajectory_dict[k]
         alpha = list(set(float(k.split('=')[-1])
-                    for k in metric_trajectory.keys()))
+                         for k in metric_trajectory.keys()))
         break
 
     for a in tqdm(alpha):
-        fig, axl = plt.subplots(figsize=(6,4))
+        fig, axl = plt.subplots(figsize=(6, 4))
         axr = axl.twinx()
         lines = []
         for label in metric_trajectory_dict:
@@ -129,17 +129,17 @@ def plot_training_trajectory(pickle_file_dict, fig_folder):
 
             lines.extend(
                 axl.plot(epoch, zero6,
-                         label=prefix+r" Sparse Ratio ($|w|<10^{-6}$)",
+                         label=prefix + r" Sparse Ratio ($|w|<10^{-6}$)",
                          **format_dict[f'{prefix}:zero_rate6'.lower()]))
             lines.extend(
                 axl.plot(epoch, zero12,
-                         label=prefix+r" Sparse Ratio ($|w|<10^{-12}$)",
+                         label=prefix + r" Sparse Ratio ($|w|<10^{-12}$)",
                          **format_dict[f'{prefix}:zero_rate12'.lower()]
                          ))
             # axr.plot(epoch, mse_loss, linestyle="dashed", label=f"{prefix}:MSE")
             lines.extend(
                 axr.plot(epoch, l1_loss,
-                         label=f"{prefix}"+r" $|W|_1$",
+                         label=f"{prefix}" + r" $|W|_1$",
                          **format_dict[f'{prefix}:l1'.lower()]))
         axl.set_ylabel("Sparse Ratio")
         axl.set_ylim([-0.05, 1.05])
@@ -168,8 +168,8 @@ if __name__ == '__main__':
         # 'RS:Adam_lr_1e-1': 'output/LinearRegression100_1/rs_Adam_lr=1e-1/metrics.csv',
         # 'RS:Adam_lr_1e-2': 'output/LinearRegression100_1/rs_Adam_lr=1e-2/metrics.csv',
         # 'RS:Adam_lr_1e-3': 'output/LinearRegression100_1/rs_Adam_lr=1e-3/metrics.csv',
-        # 'L1:SGD_lr_1e-1': 'output/LinearRegression100_1/l1_SGD_lr=1e-1/metrics.csv',
-        'L1:SGD_lr_1e-2': 'output/LinearRegression100_1/l1_SGD_lr=1e-2/metrics.csv',
+        'L1:SGD_lr_1e-1': 'output/LinearRegression100_1/l1_SGD_lr=1e-1/metrics.csv',
+        # 'L1:SGD_lr_1e-2': 'output/LinearRegression100_1/l1_SGD_lr=1e-2/metrics.csv',
         # 'L1:SGD_lr_1e-3': 'output/LinearRegression100_1/l1_SGD_lr=1e-3/metrics.csv',
         'RS:SGD_lr_1e-1': 'output/LinearRegression100_1/rs_SGD_lr=1e-1/metrics.csv',
         # 'RS:SGD_lr_1e-2': 'output/LinearRegression100_1/rs_SGD_lr=1e-2/metrics.csv',
@@ -184,8 +184,8 @@ if __name__ == '__main__':
         # 'RS:Adam_lr_1e-2': 'output/LinearRegression100_1/rs_Adam_lr=1e-2/metrics_traject.pickle',
         # 'RS:Adam_lr_1e-3': 'output/LinearRegression100_1/rs_Adam_lr=1e-3/metrics_traject.pickle',
         # 'L1:SGD_lr_1e-1': 'output/LinearRegression100_1/l1_SGD_lr=1e-1/metrics_traject.pickle',
-        'L1:SGD_lr_1e-2': 'output/LinearRegression100_1/l1_SGD_lr=1e-2/metrics_traject.pickle',
-        # 'L1:SGD_lr_1e-3': 'output/LinearRegression100_1/l1_SGD_lr=1e-3/metrics_traject.pickle',
+        # 'L1:SGD_lr_1e-2': 'output/LinearRegression100_1/l1_SGD_lr=1e-2/metrics_traject.pickle',
+        'L1:SGD_lr_1e-3': 'output/LinearRegression100_1/l1_SGD_lr=1e-3/metrics_traject.pickle',
         'RS:SGD_lr_1e-1': 'output/LinearRegression100_1/rs_SGD_lr=1e-1/metrics_traject.pickle',
         # 'RS:SGD_lr_1e-2': 'output/LinearRegression100_1/rs_SGD_lr=1e-2/metrics_traject.pickle',
         # 'RS:SGD_lr_1e-3': 'output/LinearRegression100_1/rs_SGD_lr=1e-3/metrics_traject.pickle',
@@ -193,9 +193,9 @@ if __name__ == '__main__':
 
     key_dict = {
         # 'zero_rate3':    r'Ratio of $|w| < 10^{-3}}$',
-        'zero_rate6':    r'$|w| < 10^{-6}}$',
+        'zero_rate6': r'$|w| < 10^{-6}}$',
         # 'zero_rate9':    r'Ratio of $|w| < 10^{-9}}$',
-        'zero_rate12':    r'$|w| < 10^{-12}}$'
+        'zero_rate12': r'$|w| < 10^{-12}}$'
     }
 
     os.makedirs(args.plot_folder, exist_ok=True)

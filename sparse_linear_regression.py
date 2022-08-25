@@ -4,13 +4,13 @@ from collections import defaultdict
 import pickle
 
 import numpy as np
+
 np.set_printoptions(precision=8, suppress=True)
 import pandas as pd
 
 from utils import eval_over_datasets
 from routines import run_l1_regression, run_lasso, run_redundent_sparse_regression
 from data import isotropic_predictor_data
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_samples', type=int, default=1000)
@@ -41,8 +41,8 @@ if __name__ == "__main__":
     alpha_range = np.abs(non_zero_coefficient).ravel().tolist()
     alpha_range.sort()
 
-    alpha_range = np.arange(args.num_alpha) / (args.num_alpha-1) * \
-        np.max(np.abs(non_zero_coefficient)) * 1.1
+    alpha_range = np.arange(args.num_alpha) / (args.num_alpha - 1) * \
+                  np.max(np.abs(non_zero_coefficient)) * 1.1
 
     # lasso_weights_sorted = defaultdict(list)
     # l1_weights_sorted = defaultdict(list)
@@ -67,11 +67,11 @@ if __name__ == "__main__":
 
         elif args.regularization == 'l1':
             fetch = run_l1_regression(alpha, x, y,
-                                    args.optname,
-                                    args.batch_size,
-                                    args.lr,
-                                    args.epoch,
-                                    args.device)
+                                      args.optname,
+                                      args.batch_size,
+                                      args.lr,
+                                      args.epoch,
+                                      args.device)
             weights[f'l1:alpha={alpha}'] = fetch['weights']
             metrics_trajectory[f'l1:alpha={alpha}'] = fetch['metric_list']
             eval_fetch = eval_over_datasets(x, y, fetch['weights'], alpha)

@@ -16,7 +16,7 @@ class EarlyEscapeZeroRate:
 
     def check_escape(self, zero_rate):
         self.past_zero_rate = self.beta * \
-            self.past_zero_rate + (1-self.beta) * zero_rate
+                              self.past_zero_rate + (1 - self.beta) * zero_rate
 
         if self.past_zero_rate >= zero_rate:
             return True
@@ -38,7 +38,8 @@ def run_lasso(alpha, x, y, method='default'):
     t = time.time() - t
 
     _coef = lasso_regressor.coef_
-    weights = _coef.reshape((predictor_dim, respond_dim))
+    print(_coef.shape)
+    weights = _coef.T
 
     return {'time': t,
             'weights': weights}
@@ -90,10 +91,10 @@ def run_rs_regression(alpha, x, y,
 
             epoch_loss = total_loss / len(dataloader)
             metric['epoch_loss'] = epoch_loss
-            metric['epoch'] = e+1
+            metric['epoch'] = e + 1
             metric['time'] = time.time() - t
 
-            if (e+1) % eval_every_epoch == 0:
+            if (e + 1) % eval_every_epoch == 0:
                 m = eval_over_datasets(x, y, model.get_weights(), alpha)
                 metric.update(m)
 
@@ -169,7 +170,7 @@ def run_l1_regression(alpha, x, y,
             y_pred = model(x_batch)
             l1reg = model.L1_reg()
             loss = torch.sum((y_batch - y_pred) ** 2) / 2 / \
-                y_pred.size(0) + alpha * l1reg
+                   y_pred.size(0) + alpha * l1reg
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -177,7 +178,7 @@ def run_l1_regression(alpha, x, y,
 
         epoch_loss = total_loss / len(dataloader)
         metric['epoch_loss'] = epoch_loss
-        metric['epoch'] = e+1
+        metric['epoch'] = e + 1
         if eval_every_epoch:
             m = eval_over_datasets(x, y, model.get_weights(), alpha)
             metric.update(m)
