@@ -108,41 +108,44 @@ for a in alphas:
         y = [get_lasso_time(indim, outdim, 'lasso', a) for indim in input_dims]
         y2 = [get_lasso_loss(indim, outdim, 'lasso', a) for indim in input_dims]
         ln1, = ax.plot(x, y, "r-")
-        ln2, = ax2.plot(x, y2, "r:")
         time_lnlist.append(ln1)
         time_lblist.append(f"Lasso time")
-        loss_lnlist.append(ln2)
-        loss_lblist.append(f"Lasso loss")
+        # ln2, = ax2.plot(x, y2, "r:")
+        # loss_lnlist.append(ln2)
+        # loss_lblist.append(f"Lasso loss")
+
+        lasso_loss = np.asarray(y2)
 
         x = input_dims
         y = [get_lasso_time(indim, outdim, 'lars', a) for indim in input_dims]
         y2 = [get_lasso_loss(indim, outdim, 'lars', a) for indim in input_dims]
         ln1, = ax.plot(x, y, "y-")
-        ln2, = ax2.plot(x, y2, "y:")
         time_lnlist.append(ln1)
         time_lblist.append(f"LARS time")
-        loss_lnlist.append(ln2)
-        loss_lblist.append(f"LARS loss")
+        # ln2, = ax2.plot(x, y2, "y:")
+        # loss_lnlist.append(ln2)
+        # loss_lblist.append(f"LARS loss")
 
         for _c, _m in zip(zr_ratios, zr_markers):
             cri = f'zero_rate_greater_than_threshold:{_c}'
             y = [get_rs_min_time(indim, outdim, a, cri) for indim in input_dims]
             y2 = [get_rs_min_loss(indim, outdim, a, cri) for indim in input_dims]
+            current_loss = np.asarray(y2)
             if y[0] is None or y[1] is None:
                 continue
             ln1, = ax.plot(x, y, "b-", marker=_m, alpha=0.5)
             time_lnlist.append(ln1)
-            time_lblist.append(f"RS {_c} ZR time")
-            ln2, = ax2.plot(x, y2, "b:", marker=_m, alpha=0.5)
+            time_lblist.append(f"RS {_c} time")
+            ln2, = ax2.plot(x, (current_loss - lasso_loss) / lasso_loss, "b:", marker=_m, alpha=0.5)
             loss_lnlist.append(ln2)
-            loss_lblist.append(f"RS {_c} ZR loss")
+            loss_lblist.append(f"RS {_c} related loss difference")
 
         ax.set_xlabel('Input Dimension')
         ax.set_ylabel('Time')
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax2.set_ylabel('Loss')
-        ax2.set_yscale('log')
+        # ax2.set_yscale('log')
         # ax2.set_ylim(1e3, 1e7)
         ax.set_title(rf'$\alpha={a / 5} \alpha_m$, Output dimension={outdim}')
         plt.legend(time_lnlist + loss_lnlist, time_lblist + loss_lblist, ncol=1, bbox_to_anchor=(1.2, 1.1))

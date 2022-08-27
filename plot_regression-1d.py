@@ -1,13 +1,12 @@
 import os
 import argparse
 import pickle
-from turtle import color
 import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-
+import numpy as np
 parser = argparse.ArgumentParser()
-parser.add_argument("--plot_folder", type=str, default='output/plots/with_alpha')
+parser.add_argument("--plot_folder", type=str, default='output/plots/regression-1d')
 
 marker_dict = {'RS': 's', 'L1': '+'}
 color_dict = {'zero_rate6': 'tab:blue',
@@ -46,7 +45,7 @@ def plot_sparse_ratio_vs_alpha(csv_file_dict, key_dict, fig_folder):
     df_dict = {k: pd.read_csv(csv)
                for k, csv in csv_file_dict.items()}
 
-    plt.figure(figsize=(3, 2.5))
+    plt.figure(figsize=(4.5, 2.5))
     for label in df_dict:
         df = df_dict[label]
         prefix = label.split(':')[0]
@@ -62,10 +61,10 @@ def plot_sparse_ratio_vs_alpha(csv_file_dict, key_dict, fig_folder):
                                     label=f'{prefix}({key_dict[key]})',
                                     **format_dict[f'{prefix}:{key}'.lower()])
 
-    plt.legend()
+    plt.legend(bbox_to_anchor=(1.05, 1))
     plt.xlabel(r'$\alpha$')
-    plt.ylabel('Sparse Ratio')
-    plt.title(r"The sparse ratio with $\alpha$")
+    plt.ylabel('Zero Rate')
+    plt.title(r"The zero rate with $\alpha$")
     plt.tight_layout()
     plt.savefig(os.path.join(fig_folder, 'sparse_ratio_with_alpha.pdf'))
     plt.savefig(os.path.join(fig_folder, 'sparse_ratio_with_alpha.png'))
@@ -112,9 +111,9 @@ def plot_training_trajectory(pickle_file_dict, fig_folder):
         break
 
     for a in tqdm(alpha):
-        fig, axl = plt.subplots(figsize=(6, 4))
-        axr = axl.twinx()
-        lines = []
+        alpha_ratio = a / np.max(alpha)
+        alpha_str = rf" ($\alpha={alpha_ratio:.2f} \alpha_m$)"
+        fig, (axu, axl) = plt.subplots(nrows=2, figsize=(4, 5))
         for label in metric_trajectory_dict:
             prefix = label.split(':')[0]
             metric_trajectory = metric_trajectory_dict[label]
@@ -126,34 +125,35 @@ def plot_training_trajectory(pickle_file_dict, fig_folder):
             l1_loss = [m['l1'] for m in metric_list]
             zero6 = [m['zero_rate6'] for m in metric_list]
             zero12 = [m['zero_rate12'] for m in metric_list]
-
-            lines.extend(
-                axl.plot(epoch, zero6,
-                         label=prefix + r" Sparse Ratio ($|w|<10^{-6}$)",
-                         **format_dict[f'{prefix}:zero_rate6'.lower()]))
-            lines.extend(
-                axl.plot(epoch, zero12,
-                         label=prefix + r" Sparse Ratio ($|w|<10^{-12}$)",
-                         **format_dict[f'{prefix}:zero_rate12'.lower()]
-                         ))
+            # plot Zero Rate
+            axu.plot(epoch, zero6,
+                        label=prefix + r"($10^{-6}$)",
+                        **format_dict[f'{prefix}:zero_rate6'.lower()])
+            axu.plot(epoch, zero12,
+                        label=prefix + r"($10^{-12}$)",
+                        **format_dict[f'{prefix}:zero_rate12'.lower()])
             # axr.plot(epoch, mse_loss, linestyle="dashed", label=f"{prefix}:MSE")
-            lines.extend(
-                axr.plot(epoch, l1_loss,
-                         label=f"{prefix}" + r" $|W|_1$",
-                         **format_dict[f'{prefix}:l1'.lower()]))
-        axl.set_ylabel("Sparse Ratio")
-        axl.set_ylim([-0.05, 1.05])
-        axl.set_xlabel("Step")
-        axl.set_title(r"Sparse ratio and $L1$ during training")
-        axr.set_yscale('log')
-        axl.set_xscale('log')
-        axr.set_ylabel("Loss")
+            # plot L1 norm
+            axl.plot(epoch, l1_loss,
+                        label=prefix,
+                        **format_dict[f'{prefix}:l1'.lower()])
+        axu.set_xlabel("Step")
+        axu.set_xscale('log')
+        axu.set_ylabel("Zero Rate")
+        axu.set_ylim([-0.05, 1.05])
+        axu.set_title("Zero rate" + alpha_str)
+        axu.legend()
 
-        labels = [l.get_label() for l in lines]
-        axl.legend(lines, labels, ncol=2, fontsize=8)
+        axl.set_xlabel("Step")
+        axl.set_xscale('log')
+        axl.set_ylabel(r"$|W|_1$")
+        axl.set_yscale('log')
+        axl.set_title("L1-norm of weights" + alpha_str)
+        axl.legend()
+
         fig.tight_layout()
-        fig.savefig(os.path.join(fig_folder, f"alpha={a:.4f}.pdf"))
-        fig.savefig(os.path.join(fig_folder, f"alpha={a:.4f}.png"))
+        fig.savefig(os.path.join(fig_folder, f"alpha={alpha_ratio:.4f}.pdf"))
+        fig.savefig(os.path.join(fig_folder, f"alpha={alpha_ratio:.4f}.png"))
         plt.close()
 
 
@@ -168,9 +168,9 @@ if __name__ == '__main__':
         # 'RS:Adam_lr_1e-1': 'output/LinearRegression100_1/rs_Adam_lr=1e-1/metrics.csv',
         # 'RS:Adam_lr_1e-2': 'output/LinearRegression100_1/rs_Adam_lr=1e-2/metrics.csv',
         # 'RS:Adam_lr_1e-3': 'output/LinearRegression100_1/rs_Adam_lr=1e-3/metrics.csv',
-        'L1:SGD_lr_1e-1': 'output/LinearRegression100_1/l1_SGD_lr=1e-1/metrics.csv',
+        # 'L1:SGD_lr_1e-1': 'output/LinearRegression100_1/l1_SGD_lr=1e-1/metrics.csv',
         # 'L1:SGD_lr_1e-2': 'output/LinearRegression100_1/l1_SGD_lr=1e-2/metrics.csv',
-        # 'L1:SGD_lr_1e-3': 'output/LinearRegression100_1/l1_SGD_lr=1e-3/metrics.csv',
+        'L1:SGD_lr_1e-3': 'output/LinearRegression100_1/l1_SGD_lr=1e-3/metrics.csv',
         'RS:SGD_lr_1e-1': 'output/LinearRegression100_1/rs_SGD_lr=1e-1/metrics.csv',
         # 'RS:SGD_lr_1e-2': 'output/LinearRegression100_1/rs_SGD_lr=1e-2/metrics.csv',
         # 'RS:SGD_lr_1e-3': 'output/LinearRegression100_1/rs_SGD_lr=1e-3/metrics.csv',
