@@ -37,8 +37,7 @@ def run_lasso(alpha, x, y, method='default'):
     lasso_regressor.fit(x, y)
     t = time.time() - t
 
-    _coef = lasso_regressor.coef_
-    print(_coef.shape)
+    _coef = lasso_regressor.coef_.reshape(respond_dim, predictor_dim)
     weights = _coef.T
 
     return {'time': t,

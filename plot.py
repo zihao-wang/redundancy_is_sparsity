@@ -46,7 +46,7 @@ def plot_sparse_ratio_vs_alpha(csv_file_dict, key_dict, fig_folder):
     df_dict = {k: pd.read_csv(csv)
                for k, csv in csv_file_dict.items()}
 
-    plt.figure(figsize=(5, 4))
+    plt.figure(figsize=(3, 2.5))
     for label in df_dict:
         df = df_dict[label]
         prefix = label.split(':')[0]

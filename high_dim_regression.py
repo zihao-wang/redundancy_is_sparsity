@@ -38,26 +38,26 @@ if __name__ == "__main__":
     # manually set the alpha thresholding
     alpha_range = np.arange(args.num_alpha) + 1
 
-    # run lasso if there is no lasso record
-    lasso_file = os.path.join(output_folder, 'lars_metrics.csv')
+    # run lars if there is no lasso record
+    lars_file = os.path.join(output_folder, 'lars_metrics.csv')
     # re run the lasso
-    if os.path.exists(lasso_file):
-        print(f"lasso file {lasso_file} already found")
-        lasso_df = pd.read_csv(lasso_file)
+    if os.path.exists(lars_file):
+        print(f"lasso file {lars_file} already found")
+        lars_df = pd.read_csv(lars_file)
     else:
-        print(f"lasso file {lasso_file} not found")
+        print(f"lasso file {lars_file} not found")
         data = defaultdict(list)
         for alpha in alpha_range.tolist():
             data['alpha'].append(alpha)
 
-            lasso_fetch = run_lasso(alpha, x, y, method='LARS')
-            data['time'].append(lasso_fetch['time'])
-            lasso_eval_fetch = eval_over_datasets(x, y, lasso_fetch['weights'], alpha)
-            for k in lasso_eval_fetch:
-                data[k].append(lasso_eval_fetch[k])
-        lasso_df = pd.DataFrame(data)
-        lasso_df.to_csv(lasso_file, index=False)
-        print(lasso_df.to_string())
+            lars_fetch = run_lasso(alpha, x, y, method='LARS')
+            data['time'].append(lars_fetch['time'])
+            lars_eval_fetch = eval_over_datasets(x, y, lars_fetch['weights'], alpha)
+            for k in lars_eval_fetch:
+                data[k].append(lars_eval_fetch[k])
+        lars_df = pd.DataFrame(data)
+        lars_df.to_csv(lars_file, index=False)
+        print(lars_df.to_string())
 
     # run lasso if there is no lasso record
     lasso_file = os.path.join(output_folder, 'lasso_metrics.csv')

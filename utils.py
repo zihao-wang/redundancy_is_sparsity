@@ -4,7 +4,6 @@ import numpy as np
 def eval_over_datasets(x, y, trans, alpha):
     _, predictor_dim = x.shape
     _, respond_dim = y.shape
-    print(trans)
     # trans = trans.reshape((predictor_dim, respond_dim))
     diff = y - x.dot(trans)
 
