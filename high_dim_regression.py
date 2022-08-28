@@ -21,7 +21,7 @@ parser.add_argument('--optname', type=str, default='SGD')
 parser.add_argument('--lr', type=float, default=1e-2)
 parser.add_argument('--epoch', type=int, default=10000)
 parser.add_argument('--device', type=str, default='cuda:0')
-parser.add_argument('--num_alpha', type=int, default=5)
+parser.add_argument('--num_alpha', type=int, default=10)
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -36,7 +36,7 @@ if __name__ == "__main__":
                                              seed=666)
 
     # manually set the alpha thresholding
-    alpha_range = np.arange(args.num_alpha) + 1
+    alpha_range = np.logspace(0, 2.5, args.num_alpha)
 
     # run lars if there is no lasso record
     lars_file = os.path.join(output_folder, 'lars_metrics.csv')
