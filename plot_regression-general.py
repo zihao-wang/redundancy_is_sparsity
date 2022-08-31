@@ -93,62 +93,64 @@ def get_lasso_loss(input_dim, output_dim, method, alpha):
     return min_loss
 
 
-os.makedirs('output/high_dim', exist_ok=True)
+def plot_time_vs_inputdim():
+    for a in alphas:
+        for outdim in output_dims:
+            plt.figure(figsize=(6, 2.5))
+            y = [get_lasso_time(indim, outdim, 'lasso', a) for indim in input_dims]
+            plt.plot(input_dims, y, "r-", label='Lasso')
 
-for a in alphas:
+            y = [get_lasso_time(indim, outdim, 'lars', a) for indim in input_dims]
+            plt.plot(input_dims, y, "y-", label='LARS')
+
+            for _c, _m in zip(zr_ratios, zr_markers):
+                cri = f'zero_rate_greater_than_threshold:{_c}'
+                y = [get_rs_min_time(indim, outdim, a, cri) for indim in input_dims]
+                if y[0] is None or y[1] is None:
+                    continue
+                plt.plot(input_dims, y, "b-", marker=_m, alpha=0.5, label=f'SR {_c}')
+
+            plt.xlabel('Input Dimension')
+            plt.ylabel('Time')
+            plt.xscale('log')
+            plt.yscale('log')
+            plt.title(rf'$\alpha={a / 5} \alpha_m$, Output dimension={outdim}')
+            plt.legend(bbox_to_anchor=(1.1, 1))
+            plt.tight_layout()
+            plt.savefig(f"output/plots/regression-general/alpha={a}_output_dim={outdim}.pdf")
+            plt.savefig(f"output/plots/regression-general/alpha={a}_output_dim={outdim}.png")
+
+def plot_time_vs_alpha():
+    x = np.asarray(alphas)
+    x = x / np.max(alphas)
     for outdim in output_dims:
-        fig, ax = plt.subplots(figsize=(6, 3))
-        ax2 = ax.twinx()
-        loss_lnlist = []
-        loss_lblist = []
-        time_lnlist = []
-        time_lblist = []
+        for indim in input_dims:
+            plt.figure(figsize=(6, 2.5))
+            y = [get_lasso_time(indim, outdim, 'lasso', a) for a in alphas]
+            plt.plot(x, y, "r-", label='Lasso')
 
-        x = input_dims
-        y = [get_lasso_time(indim, outdim, 'lasso', a) for indim in input_dims]
-        y2 = [get_lasso_loss(indim, outdim, 'lasso', a) for indim in input_dims]
-        ln1, = ax.plot(x, y, "r-")
-        time_lnlist.append(ln1)
-        time_lblist.append(f"Lasso time")
-        # ln2, = ax2.plot(x, y2, "r:")
-        # loss_lnlist.append(ln2)
-        # loss_lblist.append(f"Lasso loss")
+            y = [get_lasso_time(indim, outdim, 'lars', a) for a in alphas]
+            plt.plot(x, y, "y-", label='LARS')
 
-        lasso_loss = np.asarray(y2)
+            for _c, _m in zip(zr_ratios, zr_markers):
+                cri = f'zero_rate_greater_than_threshold:{_c}'
+                y = [get_rs_min_time(indim, outdim, a, cri) for a in alphas]
+                if y[0] is None or y[1] is None:
+                    continue
+                plt.plot(x, y, "b-", marker=_m, alpha=0.5, label=f'SR {_c}')
 
-        x = input_dims
-        y = [get_lasso_time(indim, outdim, 'lars', a) for indim in input_dims]
-        y2 = [get_lasso_loss(indim, outdim, 'lars', a) for indim in input_dims]
-        ln1, = ax.plot(x, y, "y-")
-        time_lnlist.append(ln1)
-        time_lblist.append(f"LARS time")
-        # ln2, = ax2.plot(x, y2, "y:")
-        # loss_lnlist.append(ln2)
-        # loss_lblist.append(f"LARS loss")
+            plt.xlabel(r'$\alpha/\alpha_m$')
+            plt.ylabel('Time')
+            plt.yscale('log')
+            plt.title(rf'Input dimension={indim}, Output dimension={outdim}')
+            plt.legend(bbox_to_anchor=(1.1, 1))
+            plt.tight_layout()
+            plt.savefig(f"output/plots/regression-general/indim={indim}_output_dim={outdim}.pdf")
+            plt.savefig(f"output/plots/regression-general/indim={indim}_output_dim={outdim}.png")
 
-        for _c, _m in zip(zr_ratios, zr_markers):
-            cri = f'zero_rate_greater_than_threshold:{_c}'
-            y = [get_rs_min_time(indim, outdim, a, cri) for indim in input_dims]
-            y2 = [get_rs_min_loss(indim, outdim, a, cri) for indim in input_dims]
-            current_loss = np.asarray(y2)
-            if y[0] is None or y[1] is None:
-                continue
-            ln1, = ax.plot(x, y, "b-", marker=_m, alpha=0.5)
-            time_lnlist.append(ln1)
-            time_lblist.append(f"RS {_c} time")
-            ln2, = ax2.plot(x, (current_loss - lasso_loss) / lasso_loss, "b:", marker=_m, alpha=0.5)
-            loss_lnlist.append(ln2)
-            loss_lblist.append(f"RS {_c} related loss difference")
 
-        ax.set_xlabel('Input Dimension')
-        ax.set_ylabel('Time')
-        ax.set_xscale('log')
-        ax.set_yscale('log')
-        ax2.set_ylabel('Loss')
-        # ax2.set_yscale('log')
-        # ax2.set_ylim(1e3, 1e7)
-        ax.set_title(rf'$\alpha={a / 5} \alpha_m$, Output dimension={outdim}')
-        plt.legend(time_lnlist + loss_lnlist, time_lblist + loss_lblist, ncol=1, bbox_to_anchor=(1.2, 1.1))
-        plt.tight_layout()
-        plt.savefig(f"output/high_dim/alpha={a}_output_dim={outdim}.pdf")
-        plt.savefig(f"output/high_dim/alpha={a}_output_dim={outdim}.png")
+if __name__ == '__main__':
+
+    os.makedirs('output/plots/regression-general', exist_ok=True)
+    plot_time_vs_alpha()
+    plot_time_vs_inputdim()
