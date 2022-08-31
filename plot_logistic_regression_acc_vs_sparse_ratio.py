@@ -20,18 +20,19 @@ def read_log(dataset, method):
             for k in d:
                 data[k].append(d[k])
     df = pd.DataFrame(data)
-    df.sort_values(by="compress_ratio")
+    df = df.sort_values(by="compress_ratio")
     return df
 
 def plot_dataset(dataset):
     plt.figure(figsize=(3, 2.5))
     for method in method_list:
         df = read_log(dataset, method)
-        plt.scatter(df.compress_ratio, df.accuracy, label=method)
+        plt.plot(df.compress_ratio, df.accuracy, label=method)
     plt.legend()
     plt.xlabel("compress ratio")
     plt.ylabel("test accuracy")
     plt.xscale('log')
+    plt.title(dataset)
     plt.tight_layout()
     plt.savefig(f"output/plots/logistic_regression_acc_vs_sparse_ratio/{dataset}.png")
     plt.savefig(f"output/plots/logistic_regression_acc_vs_sparse_ratio/{dataset}.pdf")

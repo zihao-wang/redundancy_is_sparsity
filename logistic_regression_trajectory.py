@@ -18,7 +18,7 @@ from models import RedLinear
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default='mnist')
-parser.add_argument('--lr', type=float, default=1e-2)
+parser.add_argument('--lr', type=float, default=4e-3)
 parser.add_argument('--epoch', type=int, default=10)
 parser.add_argument('--device', type=str, default='cuda:0')
 parser.add_argument('--alpha', type=float, default=1e-5)

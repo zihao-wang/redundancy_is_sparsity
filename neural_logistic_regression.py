@@ -14,7 +14,7 @@ from models import RedLinear
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default='mnist')
-parser.add_argument('--lr', type=float, default=1e-2)
+parser.add_argument('--lr', type=float, default=4e-3)
 parser.add_argument('--epoch', type=int, default=20)
 parser.add_argument('--device', type=str, default='cuda:0')
 parser.add_argument('--alpha', type=float, default=1e-5)
@@ -50,6 +50,7 @@ def neural_train_and_compress_ratio(dataset_callback,
         SparseLinear,
         max_epochs=max_epochs,
         lr=lr,
+        batch_size=1024,
         device=device,
         optimizer=torch.optim.Adam,
         optimizer__weight_decay=weight_decay
