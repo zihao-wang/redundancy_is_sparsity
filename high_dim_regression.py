@@ -23,9 +23,13 @@ parser.add_argument('--epoch', type=int, default=10000)
 parser.add_argument('--device', type=str, default='cuda:0')
 parser.add_argument('--num_alpha', type=int, default=10)
 
+def get_closest_alpha(alphas, a):
+    min_idx = np.abs(a - np.asarray(alphas)).argmin()
+    return alphas[min_idx]
+
 if __name__ == "__main__":
     args = parser.parse_args()
-    output_folder = os.path.join("output/HighDimLinearRegression",
+    output_folder = os.path.join("output/HighDimLinearRegression-v2",
                                  f"{args.predictor_dim}_{args.respond_dim}")
     os.makedirs(output_folder, exist_ok=True)
 
@@ -36,7 +40,10 @@ if __name__ == "__main__":
                                              seed=666)
 
     # manually set the alpha thresholding
-    alpha_range = np.logspace(0, 2.5, args.num_alpha)
+    alpha_range = np.logspace(-9, 1, args.num_alpha, base=3)
+    alpha_range = np.floor(alpha_range * 1e6 ) * 1e-6
+    print(alpha_range)
+    # exit()
 
     # run lars if there is no lasso record
     lars_file = os.path.join(output_folder, 'lars_metrics.csv')
@@ -87,12 +94,12 @@ if __name__ == "__main__":
     # run rs
     data = defaultdict(list)
     for alpha in alpha_range.tolist():
-        data['alpha'].append(alpha)
-        lasso_record = lasso_df[lasso_df.alpha == alpha].to_dict('list')
+        a = get_closest_alpha(lasso_df.alpha, alpha)
+        lasso_record = lasso_df[lasso_df.alpha == a].to_dict('list')
+        print(lasso_record)
         target_loss = lasso_record['total'][0]
         target_zero_rate = lasso_record['zero_rate12'][0]
-        print(lasso_record)
-        rs_fetch = run_rs_regression(alpha, x, y,
+        rs_fetch = run_rs_regression(a, x, y,
                                      args.optname,
                                      args.epoch,
                                      args.batch_size,
