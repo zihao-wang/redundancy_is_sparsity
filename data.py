@@ -33,8 +33,9 @@ def get_mnist():
 def get_20news():
     from sklearn.datasets import fetch_20newsgroups_vectorized
     print("loading 20news")
-    X, y = fetch_20newsgroups_vectorized(subset="all", return_X_y=True)
-    X = X.astype('float32')
+    X, y = fetch_20newsgroups_vectorized(subset="all", return_X_y=True, as_frame=False)
+    print(X)
+    X = np.asarray(X.todense(), dtype='float32')
     y = y.astype('int64')
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, random_state=42, stratify=y, test_size=0.1
