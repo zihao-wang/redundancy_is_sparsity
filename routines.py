@@ -61,8 +61,8 @@ def run_rs_regression(alpha, x, y,
     y_tensor = torch.tensor(y, dtype=torch.float32, device=device)
     dataset = torch.utils.data.TensorDataset(x_tensor, y_tensor)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size)
-    model = RSLinearRegression(predictor_dim=predictor_dim,
-                               respond_dim=respond_dim)
+    model = RSLinearRegression(input_dim=predictor_dim,
+                               output_dim=respond_dim)
 
     # using weight decay for L2 regularization
     model.to(device)
@@ -149,8 +149,8 @@ def run_l1_regression(alpha, x, y,
     y_tensor = torch.tensor(y, dtype=torch.float32, device=device)
     dataset = torch.utils.data.TensorDataset(x_tensor, y_tensor)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size)
-    model = LinearRegression(predictor_dim=predictor_dim,
-                             respond_dim=respond_dim)
+    model = LinearRegression(input_dim=predictor_dim,
+                             output_dim=respond_dim)
 
     # using L1 regularization
     model.to(device)

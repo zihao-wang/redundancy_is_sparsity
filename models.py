@@ -1,140 +1,126 @@
+from abc import abstractmethod
+from typing import Dict
 import torch
 from torch import nn
 from torch import functional as F
 
-class LinearRegression(torch.nn.Module):
-    def __init__(self, predictor_dim, respond_dim=1):
+class MyModelMixin:
+    @abstractmethod
+    def get_weights(self) -> Dict:
+        pass
+
+class Linear(nn.Linear, MyModelMixin):
+    def get_weights(self):
+        if self.bias:
+            return {
+                'weight': self.weight,
+                'bias': self.bias
+            }
+        else:
+            return {'weight': self.weight}
+
+class LinearRegression(nn.Module, MyModelMixin):
+    def __init__(
+            self,
+            input_dim,
+            output_dim,
+            bias=True):
         super(LinearRegression, self).__init__()
-        self.weight = torch.nn.Parameter(torch.randn(predictor_dim, respond_dim))
-
-    def forward(self, x):
-        return x.mm(self.weight)
-
-    def get_weights(self):
-        return self.weight.cpu().detach().numpy()
-
-    def L1_reg(self):
-        return torch.norm(self.weight, p=1)
-
-
-class RSLinearRegression(torch.nn.Module):
-    def __init__(self, predictor_dim, respond_dim=1):
-        super(RSLinearRegression, self).__init__()
-        self.weight = torch.nn.Parameter(torch.randn(predictor_dim, respond_dim))
-        self.shadow_weight = torch.nn.Parameter(torch.randn(predictor_dim, respond_dim))
-
-    def forward(self, x):
-        w = self.weight * self.shadow_weight
-        return x.mm(w)
-
-    def get_weights(self):
-        return self.weight.cpu().detach().numpy() * self.shadow_weight.cpu().detach().numpy()
-
-    def get_redundant_weights(self):
-        return self.weight.cpu().detach().numpy(), self.shadow_weight.cpu().detach().numpy()
-
-    def L1_reg(self):
-        return torch.norm(self.weight * self.shadow_weight, p=1)
-
-
-
-class RedLinear(nn.Module):
-    def __init__(self,in_dim,out_dim):
-        super(RedLinear, self).__init__()
-        self.weight = nn.Parameter(torch.zeros([in_dim, out_dim]).normal_(0, 1/out_dim ** 0.5))
-        self.weight2 = nn.Parameter(torch.zeros([in_dim, out_dim]).normal_(0, 1/out_dim ** 0.5))
-        self.bias = nn.Parameter(torch.zeros([1, out_dim]).normal_(0, 1))
-
+        self.linear = Linear(input_dim, output_dim, bias)
 
     def forward(self, X, **kwargs):
-        X = (X).mm((self.weight * self.weight2)) + self.bias
-        return X
+        return self.linear(X)
 
     def get_weights(self):
-        return {'weights': self.weight * self.weight2}
+        return self.linear.get_weights()
 
 
-class SparseWeightNet(nn.Module):
+class LogisticRegression(nn.Module, MyModelMixin):
     def __init__(
             self,
             input_dim,
             output_dim,
-            hidden_dim,
-            dropout=0.5,
-    ):
-        super(SparseWeightNet, self).__init__()
-        self.dropout = nn.Dropout(dropout)
-
-        self.hidden = RedLinear(input_dim, hidden_dim)
-        self.output = RedLinear(hidden_dim, output_dim)
+            bias=True):
+        super(LogisticRegression, self).__init__()
+        self.linear = Linear(input_dim, output_dim, bias)
 
     def forward(self, X, **kwargs):
-        X = F.relu(self.hidden(X))
-        #X = self.dropout(X)
-        X = F.softmax(self.output(X), dim=-1)
+        X = F.softmax(self.linear(X), dim=-1)
         return X
 
     def get_weights(self):
-        return {'hidden_weights': self.hidden.get_weights()['weights'],
-                'output_weights': self.output.get_weights()['weights']}
+        return self.linear.get_weights()
+
+class SpaRedLinear(nn.Module, MyModelMixin):
+    def __init__(self, in_features: int, out_features: int, bias: bool = True,
+                 device=None, dtype=None) -> None:
+        factory_kwargs = {'device': device, 'dtype': dtype}
+        super(SpaRedLinear, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weight = nn.Parameter(torch.empty(
+            (out_features, in_features), **factory_kwargs))
+        self.weight2 = nn.Parameter(torch.empty(
+            (out_features, in_features), **factory_kwargs))
+        self.use_bias = bias
+        if bias:
+            self.bias = nn.Parameter(torch.empty(
+                out_features, **factory_kwargs))
+            self.bias2 = nn.Parameter(
+                torch.empty(out_features, **factory_kwargs))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+
+    def forward(self, X, **kwargs):
+        weight = self.weight * self.weight2
+        if self.use_bias:
+            bias = self.bias * self.bias2
+            X = F.linear(X, weight, bias)
+        else:
+            X = F.linear(X, weight)
+        return X
+
+    def get_weights(self):
+        if self.use_bias:
+            return {'weight': self.weight * self.weight2,
+                    'bias': self.bias * self.bias2}
+        else:
+            return {'weight': self.weight * self.weight2}
 
 
-class SparseFeatureNet(nn.Module):
+class SparedLinearRegression(nn.Module, MyModelMixin):
     def __init__(
             self,
             input_dim,
             output_dim,
-            hidden_dim=200,
-    ):
-        super(SparseFeatureNet, self).__init__()
-        self.input_mask = nn.Parameter(torch.zeros([1, input_dim]).normal_(0, 1))
-        self.hidden = nn.Linear(input_dim, hidden_dim)
-        self.output = nn.Linear(hidden_dim, output_dim)
+            bias=True):
+        super(SparedLinearRegression, self).__init__()
+        self.linear = SpaRedLinear(input_dim, output_dim, bias)
 
-    def forward(self, X, **kwargs):
-        X = F.relu(self.hidden(X * self.input_mask))
-        X = F.softmax(self.output(X), dim=-1)
-        return X
+    def forward(self, x):
+        return self.linear(x)
 
     def get_weights(self):
-        return {'hidden_weights': self.hidden.weight * self.input_mask.T,
-                'output_weights': self.output.weight}
+        return self.linear.get_weights()
 
-class SparseFeatureLinear(nn.Module):
+
+class SparseLogisticRegression(nn.Module, MyModelMixin):
     def __init__(
             self,
             input_dim,
-            output_dim):
-        super(SparseFeatureLinear, self).__init__()
-        self.input_mask = nn.Parameter(torch.zeros([1, input_dim]).normal_(0, 1))
-        self.output = nn.Linear(input_dim, output_dim)
+            output_dim,
+            bias=True):
+        super(SparseLogisticRegression, self).__init__()
+        self.output = SpaRedLinear(input_dim, output_dim, bias)
 
     def forward(self, X, **kwargs):
-        X = (X * self.input_mask)
-        #X = self.dropout(X)
-        X = F.softmax(self.output(X), dim=-1)
-        return X
-
-    def get_weights(self):
-        return {
-            "output_weights": self.output.weight * self.input_mask
-        }
-
-class SparseLinear(nn.Module):
-    def __init__(
-            self,
-            input_dim,
-            output_dim):
-        super(SparseLinear, self).__init__()
-        self.output = RedLinear(input_dim, output_dim)
-
-    def forward(self, X, **kwargs):
-        #X = self.dropout(X)
         X = F.softmax(self.output(X), dim=-1)
         return X
 
     def get_weights(self):
         return self.output.get_weights()
+
 
 class FNN(nn.Module):
     def __init__(
@@ -161,3 +147,72 @@ class FNN(nn.Module):
             "output_weights": self.output.weight,
             "hidden_weights": self.hidden.weight,
         }
+
+
+class SparseFeatureLinear(nn.Module):
+    def __init__(
+            self,
+            input_dim,
+            output_dim):
+        super(SparseFeatureLinear, self).__init__()
+        self.input_mask = nn.Parameter(
+            torch.zeros([1, input_dim]).normal_(0, 1))
+        self.output = nn.Linear(input_dim, output_dim)
+
+    def forward(self, X, **kwargs):
+        X = (X * self.input_mask)
+        #X = self.dropout(X)
+        X = F.softmax(self.output(X), dim=-1)
+        return X
+
+    def get_weights(self):
+        return {
+            "output_weight": self.output.weight * self.input_mask
+        }
+
+class SparseWeightNet(nn.Module):
+    def __init__(
+            self,
+            input_dim,
+            output_dim,
+            hidden_dim,
+            dropout=0.5,
+    ):
+        super(SparseWeightNet, self).__init__()
+        self.dropout = nn.Dropout(dropout)
+
+        self.hidden = SpaRedLinear(input_dim, hidden_dim)
+        self.output = SpaRedLinear(hidden_dim, output_dim)
+
+    def forward(self, X, **kwargs):
+        X = F.relu(self.hidden(X))
+        #X = self.dropout(X)
+        X = F.softmax(self.output(X), dim=-1)
+        return X
+
+    def get_weights(self):
+        return {'hidden_weights': self.hidden.get_weights()['weights'],
+                'output_weights': self.output.get_weights()['weights']}
+
+
+class SparseFeatureNet(nn.Module):
+    def __init__(
+            self,
+            input_dim,
+            output_dim,
+            hidden_dim=200,
+    ):
+        super(SparseFeatureNet, self).__init__()
+        self.input_mask = nn.Parameter(
+            torch.zeros([1, input_dim]).normal_(0, 1))
+        self.hidden = nn.Linear(input_dim, hidden_dim)
+        self.output = nn.Linear(hidden_dim, output_dim)
+
+    def forward(self, X, **kwargs):
+        X = F.relu(self.hidden(X * self.input_mask))
+        X = F.softmax(self.output(X), dim=-1)
+        return X
+
+    def get_weights(self):
+        return {'hidden_weights': self.hidden.weight * self.input_mask.T,
+                'output_weights': self.output.weight}
