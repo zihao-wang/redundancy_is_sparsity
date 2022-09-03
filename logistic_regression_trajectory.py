@@ -14,7 +14,7 @@ from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
 import data
-from models import RedLinear
+from models import SpaRedLinear
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default='mnist')
@@ -31,7 +31,7 @@ class SparseLinear(nn.Module):
             input_dim=130107,
             output_dim=20):
         super(SparseLinear, self).__init__()
-        self.output = RedLinear(input_dim, output_dim)
+        self.output = SpaRedLinear(input_dim, output_dim)
 
     def forward(self, X, *args, **kwargs):
         #X = self.dropout(X)

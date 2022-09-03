@@ -1,4 +1,8 @@
 import numpy as np
+import os
+import time
+
+from models import MyModelMixin
 
 
 def eval_over_datasets(x, y, trans, alpha):
@@ -20,3 +24,37 @@ def eval_over_datasets(x, y, trans, alpha):
            'zero_rate9': zero_rate9,
            'zero_rate12': zero_rate12}
     return {k: float(v) for k, v in ret.items()}
+
+
+class Logger:
+    def __init__(self, log_file_path, X_test, y_test, thr=1e-10):
+        self.log_file_path = log_file_path
+        self.X_test = X_test
+        self.y_test = y_test
+        self.thr = thr
+
+    def write(self, info):
+        with open(self.log_file_path, 'at') as f:
+            f.write(info + '\n')
+
+    def __call__(self, net: MyModelMixin):
+        t = time.time()
+
+        # test accuracy
+        logits = net(self.X_test)
+        y_pred = logits.argmax(-1)
+        acc = (y_pred == self.y_test).mean().item()
+
+        weight_dict = net.get_weights()
+        total_num_w = 0
+        num_zero_w = 0
+        for _, ten in weight_dict.items():
+            total_num_w += ten.numel()
+            num_zero_w += (ten < self.thr).mean().item()
+        comp_ratio = total_num_w / (total_num_w - num_zero_w)
+
+        return {
+            "time": t,
+            "acc": acc,
+            "compression_ratio": comp_ratio,
+        }

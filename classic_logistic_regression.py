@@ -9,7 +9,7 @@ from skorch import NeuralNetClassifier
 from torch import nn
 
 import data
-from models import RedLinear
+from models import SpaRedLinear
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default='mnist')
