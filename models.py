@@ -1,4 +1,5 @@
 from abc import abstractmethod
+import math
 from typing import Dict
 import torch
 from torch import nn
@@ -45,7 +46,7 @@ class LogisticRegression(nn.Module, MyModelMixin):
         self.linear = Linear(input_dim, output_dim, bias)
 
     def forward(self, X, **kwargs):
-        X = F.softmax(self.linear(X), dim=-1)
+        X = torch.softmax(self.linear(X), dim=-1)
         return X
 
     def get_weights(self):
@@ -72,13 +73,23 @@ class SpaRedLinear(nn.Module, MyModelMixin):
             self.register_parameter('bias', None)
         self.reset_parameters()
 
+    def reset_parameters(self) -> None:
+        # Setting a=sqrt(5) in kaiming_uniform is the same as initializing with
+        # uniform(-1/sqrt(in_features), 1/sqrt(in_features)). For details, see
+        # https://github.com/pytorch/pytorch/issues/57109
+        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+        if self.bias is not None:
+            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
+            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+            nn.init.uniform_(self.bias, -bound, bound)
+
     def forward(self, X, **kwargs):
         weight = self.weight * self.weight2
         if self.use_bias:
             bias = self.bias * self.bias2
-            X = F.linear(X, weight, bias)
+            X = nn.functional.linear(X, weight, bias)
         else:
-            X = F.linear(X, weight)
+            X = nn.functional.linear(X, weight)
         return X
 
     def get_weights(self):
@@ -115,7 +126,7 @@ class SparseLogisticRegression(nn.Module, MyModelMixin):
         self.output = SpaRedLinear(input_dim, output_dim, bias)
 
     def forward(self, X, **kwargs):
-        X = F.softmax(self.output(X), dim=-1)
+        X = torch.softmax(self.output(X), dim=-1)
         return X
 
     def get_weights(self):
@@ -137,9 +148,9 @@ class FNN(nn.Module):
         self.output = nn.Linear(hidden_dim, output_dim)
 
     def forward(self, X, **kwargs):
-        X = F.relu(self.hidden(X))
+        X = torch.relu(self.hidden(X))
         #X = self.dropout(X)
-        X = F.softmax(self.output(X), dim=-1)
+        X = torch.softmax(self.output(X), dim=-1)
         return X
 
     def get_weights(self):
@@ -162,7 +173,7 @@ class SparseFeatureLinear(nn.Module):
     def forward(self, X, **kwargs):
         X = (X * self.input_mask)
         #X = self.dropout(X)
-        X = F.softmax(self.output(X), dim=-1)
+        X = torch.softmax(self.output(X), dim=-1)
         return X
 
     def get_weights(self):
@@ -185,9 +196,9 @@ class SparseWeightNet(nn.Module):
         self.output = SpaRedLinear(hidden_dim, output_dim)
 
     def forward(self, X, **kwargs):
-        X = F.relu(self.hidden(X))
+        X = torch.relu(self.hidden(X))
         #X = self.dropout(X)
-        X = F.softmax(self.output(X), dim=-1)
+        X = torch.softmax(self.output(X), dim=-1)
         return X
 
     def get_weights(self):
@@ -209,8 +220,8 @@ class SparseFeatureNet(nn.Module):
         self.output = nn.Linear(hidden_dim, output_dim)
 
     def forward(self, X, **kwargs):
-        X = F.relu(self.hidden(X * self.input_mask))
-        X = F.softmax(self.output(X), dim=-1)
+        X = torch.relu(self.hidden(X * self.input_mask))
+        X = torch.softmax(self.output(X), dim=-1)
         return X
 
     def get_weights(self):

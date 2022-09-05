@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import os
 import time
@@ -29,6 +30,7 @@ def eval_over_datasets(x, y, trans, alpha):
 class Logger:
     def __init__(self, log_file_path, X_test, y_test, thr=1e-10):
         self.log_file_path = log_file_path
+        os.remove(self.log_file_path)
         self.X_test = X_test
         self.y_test = y_test
         self.thr = thr
@@ -43,18 +45,20 @@ class Logger:
         # test accuracy
         logits = net(self.X_test)
         y_pred = logits.argmax(-1)
-        acc = (y_pred == self.y_test).mean().item()
+        acc = (y_pred == self.y_test).float().mean().item()
 
         weight_dict = net.get_weights()
         total_num_w = 0
         num_zero_w = 0
         for _, ten in weight_dict.items():
             total_num_w += ten.numel()
-            num_zero_w += (ten < self.thr).mean().item()
+            num_zero_w += (ten < self.thr).float().mean().item()
         comp_ratio = total_num_w / (total_num_w - num_zero_w)
 
-        return {
+        log = {
             "time": t,
             "acc": acc,
             "compression_ratio": comp_ratio,
         }
+
+        self.write(json.dumps(log))
