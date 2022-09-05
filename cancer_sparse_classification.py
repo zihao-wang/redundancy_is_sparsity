@@ -35,7 +35,8 @@ def _hsic_lasso(X_train, y_train, X_test, y_test, num_feat, **kwargs):
     return acc
 
 def _spared_net(X_train, y_train, X_test, y_test, alpha, device, **kwargs):
-    input_dim = X_train.shape[0]
+    input_dim = X_train.shape[1]
+    print(X_train)
     output_dim = max(np.max(y_train), np.max(y_test)) + 1
     net = SparseWeightNet(input_dim, output_dim, hidden_dim=4096).to(device)
     run_rs_regression(alpha, X_train, y_train, net, device=device, **kwargs)

@@ -50,6 +50,7 @@ def run_rs_regression(alpha, x, y,
                       epoch=200,
                       batch_size=512,
                       lr=1e-4,
+                      loss_func='ce',
                       device='cuda:0',
                       loss_less_than=0,
                       zero_rate_greater_than=1,
@@ -57,7 +58,10 @@ def run_rs_regression(alpha, x, y,
                       eval_every_epoch=100, **kwargs):
 
     x_tensor = torch.tensor(x, dtype=torch.float32, device=device)
-    y_tensor = torch.tensor(y, dtype=torch.float32, device=device)
+    if loss_func == 'ce':
+        y_tensor = torch.tensor(y, dtype=torch.int64, device=device)
+    elif loss_func == 'mse':
+        y_tensor = torch.tensor(y, dtype=torch.float32, device=device)
     dataset = torch.utils.data.TensorDataset(x_tensor, y_tensor)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size)
     if net is None:
@@ -84,13 +88,22 @@ def run_rs_regression(alpha, x, y,
             total_loss = 0
             for x_batch, y_batch in dataloader:
                 y_pred = model(x_batch)
-                l1reg = model.L1_reg()
-                loss = torch.sum((y_batch - y_pred) ** 2) / 2 / y_pred.size(0)
+                weight_dict = model.get_weights()
+                l1_reg = 0
+                loss = 0
+                for k, w in weight_dict.items():
+                    l1_reg += torch.norm(w, p=1)
+                if loss_func == 'mse':
+                    _func = torch.nn.MSELoss()
+                    loss += _func(y_pred, y_batch)
+                elif loss_func == 'ce':
+                    _func = torch.nn.CrossEntropyLoss()
+                    loss += _func(y_pred, y_batch)
                 assert not torch.isnan(loss)
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-                total_loss += loss.item() + alpha * l1reg.item()
+                total_loss += loss.item() + alpha * l1_reg.item()
 
             epoch_loss = total_loss / len(dataloader)
             metric['epoch_loss'] = epoch_loss

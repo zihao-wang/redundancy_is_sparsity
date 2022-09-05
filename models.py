@@ -79,19 +79,22 @@ class SpaRedLinear(nn.Module, MyModelMixin):
         # uniform(-1/sqrt(in_features), 1/sqrt(in_features)). For details, see
         # https://github.com/pytorch/pytorch/issues/57109
         init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+        init.kaiming_uniform_(self.weight2, a=math.sqrt(5))
         if self.bias is not None:
             fan_in, _ = init._calculate_fan_in_and_fan_out(self.weight)
             bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
             init.uniform_(self.bias, -bound, bound)
+            init.uniform_(self.bias2, -bound, bound)
 
     def forward(self, X, **kwargs):
         weight = self.weight * self.weight2
         if self.use_bias:
             bias = self.bias * self.bias2
-            X = nn.functional.linear(X, weight, bias)
+            x = nn.functional.linear(X, weight, bias)
         else:
-            X = nn.functional.linear(X, weight)
-        return X
+            x = nn.functional.linear(X, weight)
+        assert not torch.isnan(x).any()
+        return x
 
     def get_weights(self):
         if self.use_bias:
@@ -191,20 +194,18 @@ class SparseWeightNet(nn.Module):
             dropout=0.5,
     ):
         super(SparseWeightNet, self).__init__()
-        self.dropout = nn.Dropout(dropout)
 
         self.hidden = SpaRedLinear(input_dim, hidden_dim)
         self.output = SpaRedLinear(hidden_dim, output_dim)
 
     def forward(self, X, **kwargs):
         X = torch.relu(self.hidden(X))
-        #X = self.dropout(X)
         X = torch.softmax(self.output(X), dim=-1)
         return X
 
     def get_weights(self):
-        return {'hidden_weights': self.hidden.get_weights()['weights'],
-                'output_weights': self.output.get_weights()['weights']}
+        return {'hidden_weights': self.hidden.get_weights()['weight'],
+                'output_weights': self.output.get_weights()['weight']}
 
 
 class SparseFeatureNet(nn.Module):

@@ -59,7 +59,7 @@ def get_cancer_GDS(filepath):
             y.append(_y)
 
     X_arr = np.concatenate(X, axis=0).astype('float32')
-    X_arr[np.isnan(X_arr)] = 0
+    X_arr = np.nan_to_num(X_arr, nan=0)
     y_arr = np.asarray(y).astype('int64')
 
     print(f"GDS dataset {filepath} loaded")
