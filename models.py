@@ -88,9 +88,9 @@ class SpaRedLinear(nn.Module, MyModelMixin):
         weight = self.weight * self.weight2
         if self.use_bias:
             bias = self.bias * self.bias2
-            X = F.linear(X, weight, bias)
+            X = nn.functional.linear(X, weight, bias)
         else:
-            X = F.linear(X, weight)
+            X = nn.functional.linear(X, weight)
         return X
 
     def get_weights(self):

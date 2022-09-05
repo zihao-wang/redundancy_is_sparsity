@@ -4,35 +4,34 @@ import logging
 import os
 
 import torch
-from sklearn.linear_model import LogisticRegression
 from torch import nn
 
 import data
 from torch_saga import SAGA
-from models import SparseLogisticRegression
+from models import SparseLogisticRegression, LogisticRegression
 from utils import Logger
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default='mnist')
-parser.add_argument('--lr', type=float, default=4e-3)
-parser.add_argument('--epoch', type=int, default=20)
+parser.add_argument('--lr', type=float, default=10000)
+parser.add_argument('--num_steps', type=int, default=1000000)
 parser.add_argument('--device', type=str, default='cuda:0')
 parser.add_argument('--alpha', type=float, default=1e-5)
-parser.add_argument('--logging_path', type=str, default="output/SparseLogisticRegression/log")
+parser.add_argument('--logging_path', type=str, default="output/SparseLogisticRegression/test.log")
 
 
 
 def neural_train_and_compress_ratio(dataset_callback,
                                     num_steps=1000000,
                                     lr=0.004,
-                                    alpha=1e-5,
+                                    alpha=1e-3,
                                     thr=1e-10,
                                     device="cuda:0"):
+    arrlist, (input_dim, output_dim) = dataset_callback()
     X_train, X_test, y_train, y_test = [
-        torch.from_numpy(arr).to(device) for arr in dataset_callback()]
-    input_dim = X_train.size(1)
-    output_dim = y_train.size(1)
-    net = SparseLogisticRegression(input_dim, output_dim, False).to(device)
+        torch.from_numpy(arr).to(device) for arr in arrlist]
+    # net = SparseLogisticRegression(input_dim, output_dim, False).to(device)
+    net = LogisticRegression(input_dim, output_dim, bias=False).to(device)
     loss_func = nn.CrossEntropyLoss()
 
     trainer = SAGA(net, loss_func, reg_p=2, alpha=alpha)
@@ -63,8 +62,8 @@ if __name__ == "__main__":
 
     fetch = neural_train_and_compress_ratio(
         dataset_cbk,
-        max_epochs=args.epoch,
+        num_steps=args.num_steps,
         lr=args.lr,
-        weight_decay=args.alpha,
+        alpha=args.alpha,
         device=args.device
     )

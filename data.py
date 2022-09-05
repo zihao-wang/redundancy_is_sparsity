@@ -28,7 +28,7 @@ def get_mnist():
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.25, random_state=42)
     print("mnist loaded")
-    return X_train, X_test, y_train, y_test
+    return (X_train, X_test, y_train, y_test), (X.shape[1], 20)
 
 
 def get_20news():
@@ -42,7 +42,7 @@ def get_20news():
         X, y, random_state=42, stratify=y, test_size=0.1
     )
     print("20news loaded")
-    return X_train, X_test, y_train, y_test
+    return (X_train, X_test, y_train, y_test), (X.shape[1], 20)
 
 
 def get_cancer_GDS(filepath):
