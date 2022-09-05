@@ -4,7 +4,7 @@ import torch
 from tqdm import trange
 from sklearn.linear_model import Lasso, LassoLars
 
-from models import RSLinearRegression, LinearRegression
+from models import LinearRegression, SparedLinearRegression
 from utils import eval_over_datasets
 
 
@@ -24,7 +24,7 @@ class EarlyEscapeZeroRate:
             return False
 
 
-def run_lasso(alpha, x, y, method='default'):
+def run_lasso(alpha, x, y, method='default', **kwargs):
     _, predictor_dim = x.shape
     _, respond_dim = y.shape
 
@@ -45,6 +45,7 @@ def run_lasso(alpha, x, y, method='default'):
 
 
 def run_rs_regression(alpha, x, y,
+                      net=None,
                       optname='SGD',
                       epoch=200,
                       batch_size=512,
@@ -53,16 +54,19 @@ def run_rs_regression(alpha, x, y,
                       loss_less_than=0,
                       zero_rate_greater_than=1,
                       zero_rate_ratios=[0.5, 0.75, 0.9, 0.99, 0.999, 1, 1.01],
-                      eval_every_epoch=100):
-    _, predictor_dim = x.shape
-    _, respond_dim = y.shape
+                      eval_every_epoch=100, **kwargs):
 
     x_tensor = torch.tensor(x, dtype=torch.float32, device=device)
     y_tensor = torch.tensor(y, dtype=torch.float32, device=device)
     dataset = torch.utils.data.TensorDataset(x_tensor, y_tensor)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size)
-    model = RSLinearRegression(input_dim=predictor_dim,
-                               output_dim=respond_dim)
+    if net is None:
+        _, predictor_dim = x.shape
+        _, respond_dim = y.shape
+        model = SparedLinearRegression(input_dim=predictor_dim,
+                                       output_dim=respond_dim)
+    else:
+        model = net
 
     # using weight decay for L2 regularization
     model.to(device)

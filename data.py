@@ -63,4 +63,5 @@ def get_cancer_GDS(filepath):
     y_arr = np.asarray(y).astype('int64')
 
     print(f"GDS dataset {filepath} loaded")
+    print(f"#features {X_arr.shape[1]}, #labels {np.max(y)+1}, #samples {X_arr.shape[0]}")
     return X_arr, y_arr
