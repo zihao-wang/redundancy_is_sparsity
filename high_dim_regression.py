@@ -6,7 +6,7 @@ import json
 import numpy as np
 import pandas as pd
 
-from utils import eval_over_datasets
+from utils import eval_over_linear_regression_datasets
 from routines import run_lasso, run_rs_regression
 from data import isotropic_predictor_data
 
@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
             lars_fetch = run_lasso(alpha, x, y, method='LARS')
             data['time'].append(lars_fetch['time'])
-            lars_eval_fetch = eval_over_datasets(x, y, lars_fetch['weights'], alpha)
+            lars_eval_fetch = eval_over_linear_regression_datasets(x, y, lars_fetch['weights'], alpha)
             for k in lars_eval_fetch:
                 data[k].append(lars_eval_fetch[k])
         lars_df = pd.DataFrame(data)
@@ -80,7 +80,7 @@ if __name__ == "__main__":
 
             lasso_fetch = run_lasso(alpha, x, y, method='lasso')
             data['time'].append(lasso_fetch['time'])
-            lasso_eval_fetch = eval_over_datasets(x, y, lasso_fetch['weights'], alpha)
+            lasso_eval_fetch = eval_over_linear_regression_datasets(x, y, lasso_fetch['weights'], alpha)
             for k in lasso_eval_fetch:
                 data[k].append(lasso_eval_fetch[k])
         lasso_df = pd.DataFrame(data)

@@ -6,8 +6,9 @@ import time
 from models import MyModelMixin
 
 
-def eval_over_datasets(x, y, trans, alpha):
+def eval_over_linear_regression_datasets(x, y, trans, alpha):
     _, predictor_dim = x.shape
+
     _, respond_dim = y.shape
     # trans = trans.reshape((predictor_dim, respond_dim))
     diff = y - x.dot(trans)

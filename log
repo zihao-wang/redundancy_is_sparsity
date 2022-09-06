@@ -1,0 +1,31 @@
+2022-09-06 19:56:38.551 INFO cancer_sparse_classification - <module>: Namespace(B=20, alpha=0.01, dataset_name='2373', device='cuda:0', epochs=200, log_dir='log', lr=1e-05, model_name='sparednet', num_feat=50, num_trials=20, optname='Adam')
+2022-09-06 19:56:38.551 INFO GEOparse - get_GEO: Parsing data/GDS2373_full.soft.gz: 
+2022-09-06 19:56:38.551 DEBUG GEOparse - parse_GDS: DATABASE: Geo
+2022-09-06 19:56:38.552 DEBUG GEOparse - parse_GDS: DATASET: GDS2373
+2022-09-06 19:56:38.552 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_1
+2022-09-06 19:56:38.552 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_2
+2022-09-06 19:56:38.552 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_3
+2022-09-06 19:56:38.552 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_4
+2022-09-06 19:56:38.552 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_5
+2022-09-06 19:56:38.552 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_6
+2022-09-06 19:56:38.552 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_7
+2022-09-06 19:56:38.552 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_8
+2022-09-06 19:56:38.553 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_9
+2022-09-06 19:56:38.553 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_10
+2022-09-06 19:56:38.553 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_11
+2022-09-06 19:56:38.553 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_12
+2022-09-06 19:56:38.553 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_13
+2022-09-06 19:56:38.553 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_14
+2022-09-06 19:56:38.553 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_15
+2022-09-06 19:56:38.553 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_16
+2022-09-06 19:56:38.553 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_17
+2022-09-06 19:56:38.553 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_18
+2022-09-06 19:56:38.554 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_19
+2022-09-06 19:56:38.554 DEBUG GEOparse - parse_GDS: SUBSET: GDS2373_20
+2022-09-06 19:56:38.554 DEBUG GEOparse - parse_GDS: ANNOTATION: 
+2022-09-06 19:56:38.554 ERROR GEOparse - parse_GDS: Cannot recognize type Annotation
+2022-09-06 19:56:38.554 DEBUG GEOparse - parse_GDS: DATASET: GDS2373
+2022-09-06 19:56:39.868 INFO data - get_cancer_GDS: GDS dataset data/GDS2373_full.soft.gz loaded
+2022-09-06 19:56:39.868 INFO data - get_cancer_GDS: #features 22283, #labels 20, #samples 390
+2022-09-06 19:56:59.915 INFO cancer_sparse_classification - multi_trials_model: random trail 1 of 20:{'acc': 0.23076923191547394, 'dt': 19.988755226135254}
+2022-09-06 19:57:17.041 INFO cancer_sparse_classification - multi_trials_model: random trail 2 of 20:{'acc': 0.23076923191547394, 'dt': 17.10230278968811}

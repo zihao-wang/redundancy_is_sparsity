@@ -3,9 +3,10 @@ import time
 import torch
 from tqdm import trange
 from sklearn.linear_model import Lasso, LassoLars
+from sklearn.model_selection import train_test_split
 
 from models import LinearRegression, SparedLinearRegression
-from utils import eval_over_datasets
+from utils import eval_over_linear_regression_datasets
 
 
 class EarlyEscapeZeroRate:
@@ -47,7 +48,7 @@ def run_lasso(alpha, x, y, method='default', **kwargs):
 def run_rs_regression(alpha, x, y,
                       net=None,
                       optname='SGD',
-                      epoch=200,
+                      epochs=200,
                       batch_size=512,
                       lr=1e-4,
                       loss_func='ce',
@@ -82,7 +83,7 @@ def run_rs_regression(alpha, x, y,
     metric_list = []
 
     t = time.time()
-    with trange(epoch) as titer:
+    with trange(epochs) as titer:
         for e in titer:
             metric = {}
             total_loss = 0
@@ -110,8 +111,9 @@ def run_rs_regression(alpha, x, y,
             metric['epoch'] = e + 1
             metric['time'] = time.time() - t
 
+
             if (e + 1) % eval_every_epoch == 0:
-                m = eval_over_datasets(x, y, model.get_weights(), alpha)
+                m = eval_over_linear_regression_datasets(x, y, model.get_weights(), alpha)
                 metric.update(m)
 
                 should_early_stop = True
@@ -139,8 +141,7 @@ def run_rs_regression(alpha, x, y,
                 if early_escape_zero_rate.check_escape(metric['zero_rate12']):
                     break
 
-            if metric_list:
-                titer.set_postfix(metric_list[-1])
+            titer.set_postfix(metric)
 
     t = time.time() - t
 
@@ -149,6 +150,102 @@ def run_rs_regression(alpha, x, y,
     return {'time': t,
             'weights': weights,
             'metric_list': metric_list}
+
+
+def run_classification(alpha, X_train, y_train, X_test, y_test,
+                       net=None,
+                       optname='SGD',
+                       epochs=200,
+                       batch_size=512,
+                       lr=1e-4,
+                       device='cuda:0',
+                       eval_every_epoch=100, **kwargs):
+
+    X_train_arr, X_valid_arr, y_train_arr, y_valid_arr = train_test_split(
+        X_train, y_train, shuffle=True, test_size=0.2
+    )
+
+    X_train_ten = torch.tensor(X_train_arr, dtype=torch.float32, device=device)
+    y_train_ten = torch.tensor(y_train_arr, dtype=torch.int64, device=device)
+    X_valid_ten = torch.tensor(X_valid_arr, dtype=torch.float32, device=device)
+    y_valid_ten = torch.tensor(y_valid_arr, dtype=torch.int64, device=device)
+
+    # prepare the test set
+    X_test_ten = torch.tensor(X_test, dtype=torch.float32, device=device)
+    y_test_ten = torch.tensor(y_test, dtype=torch.int64, device=device)
+
+
+    dataset = torch.utils.data.TensorDataset(X_train_ten, y_train_ten)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size)
+    model = net
+
+    # using weight decay for L2 regularization
+    model.to(device)
+    optimizer = getattr(torch.optim, optname)(
+        model.parameters(), lr=lr, weight_decay=alpha)
+
+    _func = torch.nn.CrossEntropyLoss()
+    metric_list = []
+
+    best_valid_acc = 0
+
+    t = time.time()
+    with trange(epochs) as titer:
+        for e in titer:
+            metric = {}
+            total_loss = 0
+            total_ce = 0
+            total_l1_reg = 0
+            for X_batch, y_batch in dataloader:
+                y_pred = model(X_batch)
+                loss = _func(y_pred, y_batch)
+                assert torch.isfinite(loss)
+                l1_reg = 0
+                weight_dict = model.get_weights()
+                for k, w in weight_dict.items():
+                    l1_reg += torch.norm(w, p=1)
+                assert torch.isfinite(l1_reg)
+                total_ce += loss
+                total_l1_reg += l1_reg
+                total_loss += loss + alpha * l1_reg
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+            metric['cross_entropy'] = total_ce.item() / len(dataloader)
+            metric['l1_reg'] = total_l1_reg.item() / len(dataloader)
+            metric['epoch_loss'] = total_loss.item() / len(dataloader)
+            metric['epoch'] = e + 1
+            metric['time'] = time.time() - t
+
+            if (e + 1) % eval_every_epoch == 0:
+                y_pred_valid = model(X_valid_ten).argmax(-1)
+                valid_acc = (y_pred_valid == y_valid_ten).float().mean().item()
+                metric['valid_acc'] = valid_acc
+
+                total_numel = 0
+                non_zero_numel = 0
+                weight_dict = model.get_weights()
+                for k, w in weight_dict.items():
+                    total_numel += w.numel()
+                    non_zero_numel += (w > 1e-10).float().sum()
+                metric['compression'] = (total_numel / non_zero_numel).item()
+
+                titer.set_postfix(metric)
+                metric_list.append(metric)
+
+                if valid_acc >= best_valid_acc:
+                    best_valid_acc = valid_acc
+                else:
+                    break
+
+
+    y_pred_test = model(X_test_ten).argmax(-1)
+    test_acc = (y_pred_test == y_test_ten).float().mean().item()
+    metric['test_acc'] = test_acc
+    titer.set_postfix(metric)
+    metric_list.append(metric)
+    return test_acc, metric_list
 
 
 def run_l1_regression(alpha, x, y,
@@ -196,7 +293,7 @@ def run_l1_regression(alpha, x, y,
         metric['epoch_loss'] = epoch_loss
         metric['epoch'] = e + 1
         if eval_every_epoch:
-            m = eval_over_datasets(x, y, model.get_weights(), alpha)
+            m = eval_over_linear_regression_datasets(x, y, model.get_weights(), alpha)
             metric.update(m)
             if early_escape_zero_rate.check_escape(metric['zero_rate12']):
                 break

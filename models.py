@@ -142,14 +142,12 @@ class FNN(nn.Module):
             self,
             input_dim,
             output_dim,
-            hidden_dim=200,
-            dropout=0.5,
+            hidden_dim=4096,
+            bias=False
     ):
         super(FNN, self).__init__()
-        self.dropout = nn.Dropout(dropout)
-
-        self.hidden = nn.Linear(input_dim, hidden_dim)
-        self.output = nn.Linear(hidden_dim, output_dim)
+        self.hidden = nn.Linear(input_dim, hidden_dim, bias=bias)
+        self.output = nn.Linear(hidden_dim, output_dim, bias=bias)
 
     def forward(self, X, **kwargs):
         X = torch.relu(self.hidden(X))
@@ -195,17 +193,20 @@ class SparseWeightNet(nn.Module):
     ):
         super(SparseWeightNet, self).__init__()
 
-        self.hidden = SpaRedLinear(input_dim, hidden_dim)
-        self.output = SpaRedLinear(hidden_dim, output_dim)
+        self.input_layer = SpaRedLinear(input_dim, hidden_dim)
+        # self.hidden_layer = SpaRedLinear(hidden_dim, hidden_dim)
+        self.output_layer = SpaRedLinear(hidden_dim, output_dim)
 
     def forward(self, X, **kwargs):
-        X = torch.relu(self.hidden(X))
-        X = torch.softmax(self.output(X), dim=-1)
+        X = torch.relu(self.input_layer(X))
+        #X = torch.relu(self.hidden_layer(X))
+        X = torch.softmax(self.output_layer(X), dim=-1)
         return X
 
     def get_weights(self):
-        return {'hidden_weights': self.hidden.get_weights()['weight'],
-                'output_weights': self.output.get_weights()['weight']}
+        return {'input_weights': self.input_layer.get_weights()['weight'],
+                #'hidden_weights': self.hidden_layer.get_weights()['weight'],
+                'output_weights': self.output_layer.get_weights()['weight']}
 
 
 class SparseFeatureNet(nn.Module):

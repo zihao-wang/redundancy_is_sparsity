@@ -8,7 +8,7 @@ import numpy as np
 np.set_printoptions(precision=8, suppress=True)
 import pandas as pd
 
-from utils import eval_over_datasets
+from utils import eval_over_linear_regression_datasets
 from routines import run_l1_regression, run_lasso, run_redundent_sparse_regression
 from data import isotropic_predictor_data
 
@@ -59,7 +59,7 @@ if __name__ == "__main__":
         if args.regularization == 'lasso':
             fetch = run_lasso(alpha, x, y)
             weights[f'lasso:alpha={alpha}'] = fetch['weights']
-            eval_fetch = eval_over_datasets(x, y, fetch['weights'], alpha)
+            eval_fetch = eval_over_linear_regression_datasets(x, y, fetch['weights'], alpha)
             for k in eval_fetch:
                 metrics_output[k].append(eval_fetch[k])
             metrics_output['time'].append(fetch['time'])
@@ -74,7 +74,7 @@ if __name__ == "__main__":
                                       args.device)
             weights[f'l1:alpha={alpha}'] = fetch['weights']
             metrics_trajectory[f'l1:alpha={alpha}'] = fetch['metric_list']
-            eval_fetch = eval_over_datasets(x, y, fetch['weights'], alpha)
+            eval_fetch = eval_over_linear_regression_datasets(x, y, fetch['weights'], alpha)
             for k in eval_fetch:
                 metrics_output[k].append(eval_fetch[k])
             metrics_output['time'].append(fetch['time'])
@@ -89,7 +89,7 @@ if __name__ == "__main__":
                                                     args.device)
             weights[f'rs:alpha={alpha}'] = fetch['weights']
             metrics_trajectory[f'rs:alpha={alpha}'] = fetch['metric_list']
-            eval_fetch = eval_over_datasets(x, y, fetch['weights'], alpha)
+            eval_fetch = eval_over_linear_regression_datasets(x, y, fetch['weights'], alpha)
             for k in eval_fetch:
                 metrics_output[k].append(eval_fetch[k])
             metrics_output['time'].append(fetch['time'])
