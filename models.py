@@ -47,14 +47,14 @@ class LogisticRegression(nn.Module, MyModelMixin):
         self.linear = Linear(input_dim, output_dim, bias)
 
     def forward(self, X, **kwargs):
-        X = torch.softmax(self.linear(X), dim=-1)
+        X = self.linear(X)
         return X
 
     def get_weights(self):
         return self.linear.get_weights()
 
 class SpaRedLinear(nn.Module, MyModelMixin):
-    def __init__(self, in_features: int, out_features: int, bias: bool = True,
+    def __init__(self, in_features: int, out_features: int, bias: bool = False,
                  device=None, dtype=None) -> None:
         factory_kwargs = {'device': device, 'dtype': dtype}
         super(SpaRedLinear, self).__init__()
@@ -130,7 +130,7 @@ class SparseLogisticRegression(nn.Module, MyModelMixin):
         self.output = SpaRedLinear(input_dim, output_dim, bias)
 
     def forward(self, X, **kwargs):
-        X = torch.softmax(self.output(X), dim=-1)
+        X = self.output(X)
         return X
 
     def get_weights(self):
@@ -152,7 +152,7 @@ class FNN(nn.Module):
     def forward(self, X, **kwargs):
         X = torch.relu(self.hidden(X))
         #X = self.dropout(X)
-        X = torch.softmax(self.output(X), dim=-1)
+        X = self.output(X)
         return X
 
     def get_weights(self):
@@ -175,7 +175,7 @@ class SparseFeatureLinear(nn.Module):
     def forward(self, X, **kwargs):
         X = (X * self.input_mask)
         #X = self.dropout(X)
-        X = torch.softmax(self.output(X), dim=-1)
+        X = self.output(X)
         return X
 
     def get_weights(self):
@@ -200,7 +200,7 @@ class SparseWeightNet(nn.Module):
     def forward(self, X, **kwargs):
         X = torch.relu(self.input_layer(X))
         #X = torch.relu(self.hidden_layer(X))
-        X = torch.softmax(self.output_layer(X), dim=-1)
+        X = self.output_layer(X)
         return X
 
     def get_weights(self):
@@ -224,7 +224,7 @@ class SparseFeatureNet(nn.Module):
 
     def forward(self, X, **kwargs):
         X = torch.relu(self.hidden(X * self.input_mask))
-        X = torch.softmax(self.output(X), dim=-1)
+        X = self.output(X)
         return X
 
     def get_weights(self):

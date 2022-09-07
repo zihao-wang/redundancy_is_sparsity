@@ -12,7 +12,7 @@ from sklearn.model_selection import KFold, train_test_split
 from sklearn.svm import SVC
 
 from data import get_cancer_GDS
-from models import FNN, SparseWeightNet
+from models import FNN, SparseLogisticRegression, SparseWeightNet
 from routines import run_classification
 
 
@@ -28,7 +28,7 @@ parser.add_argument("--B", type=int, default=20)
 # spared arguments
 parser.add_argument("--alpha", type=float, default=1e-3)
 parser.add_argument("--lr", type=float, default=1e-5)
-parser.add_argument("--batch_size", type=int, default=128)
+parser.add_argument("--batch_size", type=int, default=1024)
 parser.add_argument("--epochs", type=int, default=200)
 parser.add_argument("--device", type=str, default="cuda:0")
 parser.add_argument("--optname", type=str, default="Adam")
@@ -59,7 +59,7 @@ def _hsic_lasso(X_train, y_train, X_test, y_test, num_feat, B, **kwargs):
 def _spared_net(X_train, y_train, X_test, y_test, alpha, device, **kwargs):
     input_dim = X_train.shape[1]
     output_dim = max(np.max(y_train), np.max(y_test)) + 1
-    net = SparseWeightNet(input_dim, output_dim, hidden_dim=4096).to(device)
+    net = SparseWeightNet(input_dim, output_dim, hidden_dim=10000).to(device)
     acc, metric_list = run_classification(
         alpha, X_train, y_train, X_test, y_test, net,
         device=device, eval_every_epoch=5, **kwargs)

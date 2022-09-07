@@ -69,5 +69,5 @@ def get_cancer_GDS(filepath):
     X_arr /= X_arr_std
 
     logging.info(f"GDS dataset {filepath} loaded")
-    logging.info(f"#features {X_arr.shape[1]}, #labels {np.max(y)+1}, #samples {X_arr.shape[0]}")
+    logging.info(f"#features {X_arr.shape[1]}, #labels {np.max(y_arr)+1}, #samples {X_arr.shape[0]}")
     return X_arr, y_arr

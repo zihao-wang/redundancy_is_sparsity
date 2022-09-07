@@ -188,6 +188,7 @@ def run_classification(alpha, X_train, y_train, X_test, y_test,
     metric_list = []
 
     best_valid_acc = 0
+    best_model = 0
 
     t = time.time()
     with trange(epochs) as titer:
@@ -198,6 +199,7 @@ def run_classification(alpha, X_train, y_train, X_test, y_test,
             total_l1_reg = 0
             for X_batch, y_batch in dataloader:
                 y_pred = model(X_batch)
+                train_acc = (y_pred.argmax(-1) == y_batch).float().mean().item()
                 loss = _func(y_pred, y_batch)
                 assert torch.isfinite(loss)
                 l1_reg = 0
@@ -210,9 +212,11 @@ def run_classification(alpha, X_train, y_train, X_test, y_test,
                 total_loss += loss + alpha * l1_reg
                 optimizer.zero_grad()
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
                 optimizer.step()
 
             metric['cross_entropy'] = total_ce.item() / len(dataloader)
+            metric['train_acc'] = train_acc
             metric['l1_reg'] = total_l1_reg.item() / len(dataloader)
             metric['epoch_loss'] = total_loss.item() / len(dataloader)
             metric['epoch'] = e + 1
