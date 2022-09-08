@@ -12,13 +12,13 @@ from sklearn.model_selection import KFold, train_test_split
 from sklearn.svm import SVC
 
 from data import get_cancer_GDS
-from models import FNN, SparseLogisticRegression, SparseWeightNet
+from models import MLP, LinearRegression, SparseFeatureLinearRegression, SparseFeatureNet, SparseWeightNet
 from routines import run_classification
 
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--model_name", type=str, default='sparednet', choices=['sparednet', 'mlpnet', 'hsiclasso'])
+parser.add_argument("--model_name", type=str, default='hsiclasso')
 parser.add_argument("--dataset_name", type=str, default="")
 parser.add_argument("--num_trials", type=int, default=20)
 parser.add_argument("--log_dir", type=str, default='log')
@@ -29,17 +29,19 @@ parser.add_argument("--B", type=int, default=20)
 parser.add_argument("--alpha", type=float, default=1e-3)
 parser.add_argument("--lr", type=float, default=1e-5)
 parser.add_argument("--batch_size", type=int, default=1024)
-parser.add_argument("--epochs", type=int, default=200)
+parser.add_argument("--epochs", type=int, default=5000)
 parser.add_argument("--device", type=str, default="cuda:0")
 parser.add_argument("--optname", type=str, default="Adam")
 
 
 def _logistic_regression(X_train, y_train, X_test, y_test, **kwargs):
-    clf = LogisticRegression(penalty='l1', solver='saga', C=10000, max_iter=10000)
+    clf = LogisticRegression(
+        penalty='l1', solver='saga', C=10000, max_iter=10000)
     clf.fit(X_train, y_train)
     y_pred = clf.predict(X_test)
     acc = accuracy_score(y_pred, y_test)
     return acc
+
 
 def _hsic_lasso(X_train, y_train, X_test, y_test, num_feat, B, **kwargs):
     from pyHSICLasso import HSICLasso
@@ -56,31 +58,30 @@ def _hsic_lasso(X_train, y_train, X_test, y_test, num_feat, B, **kwargs):
     acc = accuracy_score(y_pred, y_test)
     return acc
 
-def _spared_net(X_train, y_train, X_test, y_test, alpha, device, **kwargs):
+
+def _some_net(NetClass, X_train, y_train, X_test, y_test, alpha, device, **kwargs):
     input_dim = X_train.shape[1]
     output_dim = max(np.max(y_train), np.max(y_test)) + 1
-    net = SparseWeightNet(input_dim, output_dim, hidden_dim=10000).to(device)
+    net = NetClass(input_dim, output_dim).to(device)
     acc, metric_list = run_classification(
         alpha, X_train, y_train, X_test, y_test, net,
-        device=device, eval_every_epoch=5, **kwargs)
+        device=device, **kwargs)
     return acc
 
-def _mlp_net(X_train, y_train, X_test, y_test, alpha, device, **kwargs):
-    input_dim = X_train.shape[1]
-    output_dim = max(np.max(y_train), np.max(y_test)) + 1
-    net = FNN(input_dim, output_dim, hidden_dim=4096).to(device)
-    acc, metric_list = run_classification(
-        alpha, X_train, y_train, X_test, y_test, net,
-        device=device, eval_every_epoch=5, **kwargs)
-    return acc
 
 def evaluate_model(X_train, y_train, X_test, y_test, model_name, **kwargs):
-    if model_name.lower() == 'logisticregression':
+    if model_name.lower() == 'logistic_regression':
         acc = _logistic_regression(X_train, y_train, X_test, y_test, **kwargs)
-    elif model_name.lower() == 'mlpnet':
-        acc = _mlp_net(X_train, y_train, X_test, y_test, **kwargs)
-    elif model_name.lower() == 'sparednet':
-        acc = _spared_net(X_train, y_train, X_test, y_test, **kwargs)
+    elif model_name.lower() == 'mlp':
+        acc = _some_net(MLP, X_train, y_train, X_test, y_test, **kwargs)
+    elif model_name.lower() == 'sparse_feature_net':
+        acc = _some_net(SparseFeatureNet, X_train, y_train, X_test, y_test, **kwargs)
+    elif model_name.lower() == 'sparse_feature_linear':
+        acc = _some_net(SparseFeatureLinearRegression, X_train, y_train, X_test, y_test, **kwargs)
+    elif model_name.lower() == 'sparse_weight_net':
+        acc = _some_net(SparseWeightNet, X_train, y_train, X_test, y_test, **kwargs)
+    elif model_name.lower() == 'sparse_weight_linear':
+        acc = _some_net(SparseWeightNet, X_train, y_train, X_test, y_test, **kwargs)
     elif model_name.lower() == 'hsiclasso':
         acc = _hsic_lasso(X_train, y_train, X_test, y_test, **kwargs)
     else:
@@ -89,30 +90,14 @@ def evaluate_model(X_train, y_train, X_test, y_test, model_name, **kwargs):
     return acc
 
 
-def cross_validate_model(X, y, model_name, **kwargs):
-    kf = KFold(n_splits=10)
-    total_acc = 0
-    for i, (train_index, test_index) in enumerate(kf.split(X)):
-        X_train, X_test = X[train_index], X[test_index]
-        y_train, y_test = y[train_index], y[test_index]
-        t0 = time.time()
-        acc = evaluate_model(X_train, y_train, X_test, y_test, model_name, **kwargs)
-        dt = time.time() - t0
-        metric = {
-            'acc': acc,
-            'dt': dt
-        }
-        logging.info(f"cross validation fold:{metric}")
-        total_acc += acc
-    print(model_name, acc / 10)
-    return acc
-
 def multi_trials_model(X, y, model_name, num_trials=100, **kwargs):
     acc_list = []
     for i in range(num_trials):
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, shuffle=True)
         t0 = time.time()
-        acc = evaluate_model(X_train, y_train, X_test, y_test, model_name, **kwargs)
+        acc = evaluate_model(X_train, y_train, X_test,
+                             y_test, model_name, **kwargs)
         dt = time.time() - t0
         metric = {
             'acc': acc,
@@ -124,8 +109,9 @@ def multi_trials_model(X, y, model_name, num_trials=100, **kwargs):
         'model_name': model_name,
         'mean_acc': np.mean(acc_list),
         'var_acc': np.std(acc_list),
-        }
+    }
     return ret
+
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -158,5 +144,7 @@ if __name__ == "__main__":
             logging.info("---- Begin of Report ----")
             logging.info(args)
             logging.info(f)
-            logging.info(metric)
+            metric['dataset'] = f
+            metric.update(vars(args))
+            logging.info(f"metric:{metric}")
             logging.info("---- End of Report ----")

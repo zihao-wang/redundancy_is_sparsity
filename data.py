@@ -66,7 +66,7 @@ def get_cancer_GDS(filepath):
     X_arr_mean = np.mean(X_arr, axis=0)
     X_arr_std = np.std(X_arr, axis=0)
     X_arr -= X_arr_mean
-    X_arr /= X_arr_std
+    X_arr /= (X_arr_std + 1e-10)
 
     logging.info(f"GDS dataset {filepath} loaded")
     logging.info(f"#features {X_arr.shape[1]}, #labels {np.max(y_arr)+1}, #samples {X_arr.shape[0]}")

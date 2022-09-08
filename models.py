@@ -36,23 +36,6 @@ class LinearRegression(nn.Module, MyModelMixin):
     def get_weights(self):
         return self.linear.get_weights()
 
-
-class LogisticRegression(nn.Module, MyModelMixin):
-    def __init__(
-            self,
-            input_dim,
-            output_dim,
-            bias=True):
-        super(LogisticRegression, self).__init__()
-        self.linear = Linear(input_dim, output_dim, bias)
-
-    def forward(self, X, **kwargs):
-        X = self.linear(X)
-        return X
-
-    def get_weights(self):
-        return self.linear.get_weights()
-
 class SpaRedLinear(nn.Module, MyModelMixin):
     def __init__(self, in_features: int, out_features: int, bias: bool = False,
                  device=None, dtype=None) -> None:
@@ -103,13 +86,12 @@ class SpaRedLinear(nn.Module, MyModelMixin):
         else:
             return {'weight': self.weight * self.weight2}
 
-
 class SparedLinearRegression(nn.Module, MyModelMixin):
     def __init__(
             self,
             input_dim,
             output_dim,
-            bias=True):
+            bias=False):
         super(SparedLinearRegression, self).__init__()
         self.linear = SpaRedLinear(input_dim, output_dim, bias)
 
@@ -119,25 +101,28 @@ class SparedLinearRegression(nn.Module, MyModelMixin):
     def get_weights(self):
         return self.linear.get_weights()
 
-
-class SparseLogisticRegression(nn.Module, MyModelMixin):
+class SparseFeatureLinearRegression(nn.Module):
     def __init__(
             self,
             input_dim,
             output_dim,
-            bias=True):
-        super(SparseLogisticRegression, self).__init__()
-        self.output = SpaRedLinear(input_dim, output_dim, bias)
+            bias=False):
+        super(SparseFeatureLinearRegression, self).__init__()
+        self.input_mask = nn.Parameter(torch.zeros([1, input_dim]).normal_(0, 1))
+        self.output = nn.Linear(input_dim, output_dim, bias=bias)
 
     def forward(self, X, **kwargs):
+        X = (X * self.input_mask)
         X = self.output(X)
         return X
 
     def get_weights(self):
-        return self.output.get_weights()
+        return {
+            "output_weight": self.output.weight * self.input_mask
+        }
 
 
-class FNN(nn.Module):
+class MLP(nn.Module):
     def __init__(
             self,
             input_dim,
@@ -145,7 +130,7 @@ class FNN(nn.Module):
             hidden_dim=4096,
             bias=False
     ):
-        super(FNN, self).__init__()
+        super(MLP, self).__init__()
         self.hidden = nn.Linear(input_dim, hidden_dim, bias=bias)
         self.output = nn.Linear(hidden_dim, output_dim, bias=bias)
 
@@ -162,26 +147,6 @@ class FNN(nn.Module):
         }
 
 
-class SparseFeatureLinear(nn.Module):
-    def __init__(
-            self,
-            input_dim,
-            output_dim):
-        super(SparseFeatureLinear, self).__init__()
-        self.input_mask = nn.Parameter(
-            torch.zeros([1, input_dim]).normal_(0, 1))
-        self.output = nn.Linear(input_dim, output_dim)
-
-    def forward(self, X, **kwargs):
-        X = (X * self.input_mask)
-        #X = self.dropout(X)
-        X = self.output(X)
-        return X
-
-    def get_weights(self):
-        return {
-            "output_weight": self.output.weight * self.input_mask
-        }
 
 class SparseWeightNet(nn.Module):
     def __init__(
@@ -189,7 +154,6 @@ class SparseWeightNet(nn.Module):
             input_dim,
             output_dim,
             hidden_dim,
-            dropout=0.5,
     ):
         super(SparseWeightNet, self).__init__()
 
@@ -219,14 +183,16 @@ class SparseFeatureNet(nn.Module):
         super(SparseFeatureNet, self).__init__()
         self.input_mask = nn.Parameter(
             torch.zeros([1, input_dim]).normal_(0, 1))
-        self.hidden = nn.Linear(input_dim, hidden_dim)
-        self.output = nn.Linear(hidden_dim, output_dim)
+        self.hidden = SpaRedLinear(input_dim, hidden_dim)
+        self.hidden_mask = nn.Parameter(
+            torch.zeros([1, hidden_dim]).normal_(0, 1))
+        self.output = SpaRedLinear(hidden_dim, output_dim)
 
     def forward(self, X, **kwargs):
         X = torch.relu(self.hidden(X * self.input_mask))
-        X = self.output(X)
+        X = self.output(X * self.hidden_mask)
         return X
 
     def get_weights(self):
-        return {'hidden_weights': self.hidden.weight * self.input_mask.T,
-                'output_weights': self.output.weight}
+        return {'hidden_weights': self.hidden.weight * self.input_mask,
+                'output_weights': self.output.weight * self.hidden_mask}

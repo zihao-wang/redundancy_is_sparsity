@@ -1,27 +1,22 @@
-2022-09-07 22:41:09.018 INFO cancer_sparse_classification - <module>: Namespace(B=20, alpha=0.001, batch_size=1024, dataset_name='', device='cuda:0', epochs=200, log_dir='log', lr=1e-05, model_name='sparednet', num_feat=50, num_trials=20, optname='Adam')
-2022-09-07 22:41:09.019 INFO GEOparse - get_GEO: Parsing data/GDS1815_full.soft.gz: 
-2022-09-07 22:41:09.020 DEBUG GEOparse - parse_GDS: DATABASE: Geo
-2022-09-07 22:41:09.020 DEBUG GEOparse - parse_GDS: DATASET: GDS1815
-2022-09-07 22:41:09.020 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_1
-2022-09-07 22:41:09.021 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_2
-2022-09-07 22:41:09.021 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_3
-2022-09-07 22:41:09.021 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_4
-2022-09-07 22:41:09.021 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_5
-2022-09-07 22:41:09.021 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_6
-2022-09-07 22:41:09.022 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_7
-2022-09-07 22:41:09.022 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_8
-2022-09-07 22:41:09.022 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_9
-2022-09-07 22:41:09.022 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_10
-2022-09-07 22:41:09.023 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_11
-2022-09-07 22:41:09.023 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_12
-2022-09-07 22:41:09.023 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_13
-2022-09-07 22:41:09.023 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_14
-2022-09-07 22:41:09.023 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_15
-2022-09-07 22:41:09.024 DEBUG GEOparse - parse_GDS: ANNOTATION: 
-2022-09-07 22:41:09.024 ERROR GEOparse - parse_GDS: Cannot recognize type Annotation
-2022-09-07 22:41:09.024 DEBUG GEOparse - parse_GDS: DATASET: GDS1815
-2022-09-07 22:41:10.452 INFO data - get_cancer_GDS: GDS dataset data/GDS1815_full.soft.gz loaded
-2022-09-07 22:41:10.452 INFO data - get_cancer_GDS: #features 22283, #labels 15, #samples 400
-2022-09-07 22:41:19.054 INFO cancer_sparse_classification - multi_trials_model: random trail 1 of 20:{'acc': 0.07500000298023224, 'dt': 8.54212737083435}
-2022-09-07 22:41:23.812 INFO cancer_sparse_classification - multi_trials_model: random trail 2 of 20:{'acc': 0.125, 'dt': 4.731839179992676}
-2022-09-07 22:41:36.731 INFO cancer_sparse_classification - multi_trials_model: random trail 3 of 20:{'acc': 0.22500000894069672, 'dt': 12.903820753097534}
+2022-09-08 13:35:16.404 INFO cancer_sparse_classification - <module>: Namespace(B=20, alpha=0.001, batch_size=1024, dataset_name='1815', device='cuda:0', epochs=5000, log_dir='log', lr=0.0001, model_name='sparse_feature_net', num_feat=50, num_trials=20, optname='SGD')
+2022-09-08 13:35:16.404 INFO GEOparse - get_GEO: Parsing data/GDS1815_full.soft.gz: 
+2022-09-08 13:35:16.405 DEBUG GEOparse - parse_GDS: DATABASE: Geo
+2022-09-08 13:35:16.405 DEBUG GEOparse - parse_GDS: DATASET: GDS1815
+2022-09-08 13:35:16.405 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_1
+2022-09-08 13:35:16.405 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_2
+2022-09-08 13:35:16.405 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_3
+2022-09-08 13:35:16.405 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_4
+2022-09-08 13:35:16.405 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_5
+2022-09-08 13:35:16.405 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_6
+2022-09-08 13:35:16.406 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_7
+2022-09-08 13:35:16.406 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_8
+2022-09-08 13:35:16.406 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_9
+2022-09-08 13:35:16.406 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_10
+2022-09-08 13:35:16.406 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_11
+2022-09-08 13:35:16.406 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_12
+2022-09-08 13:35:16.406 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_13
+2022-09-08 13:35:16.406 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_14
+2022-09-08 13:35:16.407 DEBUG GEOparse - parse_GDS: SUBSET: GDS1815_15
+2022-09-08 13:35:16.407 DEBUG GEOparse - parse_GDS: ANNOTATION: 
+2022-09-08 13:35:16.407 ERROR GEOparse - parse_GDS: Cannot recognize type Annotation
+2022-09-08 13:35:16.407 DEBUG GEOparse - parse_GDS: DATASET: GDS1815

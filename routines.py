@@ -1,3 +1,5 @@
+import logging
+from collections import Counter
 import time
 
 import torch
@@ -155,8 +157,8 @@ def run_rs_regression(alpha, x, y,
 def run_classification(alpha, X_train, y_train, X_test, y_test,
                        net=None,
                        optname='SGD',
-                       epochs=200,
-                       batch_size=512,
+                       epochs=10000,
+                       batch_size=1024,
                        lr=1e-4,
                        device='cuda:0',
                        eval_every_epoch=100, **kwargs):
@@ -188,7 +190,7 @@ def run_classification(alpha, X_train, y_train, X_test, y_test,
     metric_list = []
 
     best_valid_acc = 0
-    best_model = 0
+    final_test_acc = 0
 
     t = time.time()
     with trange(epochs) as titer:
@@ -225,31 +227,29 @@ def run_classification(alpha, X_train, y_train, X_test, y_test,
             if (e + 1) % eval_every_epoch == 0:
                 y_pred_valid = model(X_valid_ten).argmax(-1)
                 valid_acc = (y_pred_valid == y_valid_ten).float().mean().item()
+                y_pred_test = model(X_test_ten).argmax(-1)
+                test_acc = (y_pred_test == y_test_ten).float().mean().item()
                 metric['valid_acc'] = valid_acc
+                metric['test_acc'] = test_acc
 
                 total_numel = 0
                 non_zero_numel = 0
                 weight_dict = model.get_weights()
                 for k, w in weight_dict.items():
                     total_numel += w.numel()
-                    non_zero_numel += (w > 1e-10).float().sum()
+                    non_zero_numel += (w > 1e-20).float().sum()
                 metric['compression'] = (total_numel / non_zero_numel).item()
 
                 titer.set_postfix(metric)
                 metric_list.append(metric)
+                logging.info(f"trajectory {metric}")
 
-                if valid_acc >= best_valid_acc:
+                if valid_acc > best_valid_acc:
                     best_valid_acc = valid_acc
-                else:
-                    break
+                    final_test_acc = test_acc
 
 
-    y_pred_test = model(X_test_ten).argmax(-1)
-    test_acc = (y_pred_test == y_test_ten).float().mean().item()
-    metric['test_acc'] = test_acc
-    titer.set_postfix(metric)
-    metric_list.append(metric)
-    return test_acc, metric_list
+    return final_test_acc, metric_list
 
 
 def run_l1_regression(alpha, x, y,
