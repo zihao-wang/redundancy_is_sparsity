@@ -8,7 +8,7 @@ from torch import nn
 
 import data
 from torch_saga import SAGA
-from models import SparseLogisticRegression, LogisticRegression
+from models import SparseFeatureLinearRegression
 from utils import Logger
 
 parser = argparse.ArgumentParser()
@@ -30,8 +30,8 @@ def neural_train_and_compress_ratio(dataset_callback,
     arrlist, (input_dim, output_dim) = dataset_callback()
     X_train, X_test, y_train, y_test = [
         torch.from_numpy(arr).to(device) for arr in arrlist]
-    # net = SparseLogisticRegression(input_dim, output_dim, False).to(device)
-    net = LogisticRegression(input_dim, output_dim, bias=False).to(device)
+    net = SparseFeatureLinearRegression(input_dim, output_dim, False).to(device)
+    # net = LogisticRegression(input_dim, output_dim, bias=False).to(device)
     loss_func = nn.CrossEntropyLoss()
 
     trainer = SAGA(net, loss_func, reg_p=2, alpha=alpha)
