@@ -349,6 +349,7 @@ def run_sparse_feature_classification(alpha, X_train, y_train, X_test, y_test,
                 y_pred_valid = model(X_valid_ten).argmax(-1)
                 valid_acc = (y_pred_valid == y_valid_ten).float().mean().item()
                 y_pred_test = model(X_test_ten).argmax(-1)
+                metric['#labels'] = len(Counter(y_pred_test.cpu().numpy().tolist()))
                 test_acc = (y_pred_test == y_test_ten).float().mean().item()
                 metric['valid_acc'] = valid_acc
                 metric['test_acc'] = test_acc
@@ -356,7 +357,7 @@ def run_sparse_feature_classification(alpha, X_train, y_train, X_test, y_test,
                 sparse_feature_index = (torch.abs(model.input_mask) < 1e-10).float()
                 sparse_feature_rate = torch.sum(sparse_feature_index) / sparse_feature_index.numel()
                 sparse_feature_rate = sparse_feature_rate.item()
-                metric['sparse_feature_rate'] = sparse_feature_rate
+                metric['feat_rate'] = sparse_feature_rate
 
                 titer.set_postfix(metric)
                 metric_list.append(metric)
