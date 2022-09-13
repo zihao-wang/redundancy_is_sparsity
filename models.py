@@ -114,7 +114,7 @@ class SparseFeatureLinearRegression(nn.Module):
     def forward(self, X, **kwargs):
         X = (X * self.input_mask)
         X = self.output(X)
-        return X
+        return X, X
 
     def get_weights(self):
         return {
@@ -187,7 +187,7 @@ class SparseFeatureNet(nn.Module):
     def forward(self, X, **kwargs):
         X = torch.relu(self.input(X))
         X = self.output(X)
-        return X
+        return X, X
 
     def get_weights(self):
         return {'input_weights': self.input.get_weights()['weights'],
@@ -204,7 +204,7 @@ class SparseFeatureNetv2(nn.Module):
         super(SparseFeatureNetv2, self).__init__()
         self.input_mask = nn.Parameter(torch.zeros([1, input_dim]).normal_(0, 1))
         self.linear_output = nn.Linear(input_dim, output_dim, bias=False)
-        self.linear_feature = nn.Linear(input_dim, hidden_dim)
+        self.linear_feature = nn.Linear(input_dim, hidden_dim, bias=False)
         self.mlp_output = nn.Sequential(
            nn.ReLU(),
            nn.Linear(hidden_dim, hidden_dim),
@@ -217,10 +217,7 @@ class SparseFeatureNetv2(nn.Module):
         X1 = self.linear_output(sparse_feature)
         X2 = self.linear_feature(sparse_feature)
         X2 = self.mlp_output(X2)
-        if self.training:
-            return (X1 + X2) / 2
-        else:
-            return X2
+        return X1, X2
 
     def get_weights(self):
         return {'input_mask': self.input_mask}

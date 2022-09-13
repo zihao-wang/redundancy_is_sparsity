@@ -311,16 +311,17 @@ def run_sparse_feature_classification(alpha, X_train, y_train, X_test, y_test,
 
     t = time.time()
     with trange(epochs) as titer:
-        model.train()
         for e in titer:
             metric = {}
             total_loss = 0
             total_ce = 0
             total_l1_reg = 0
             for X_batch, y_batch in dataloader:
-                y_pred = model(X_batch)
+                y_linear_pred, y_pred = model(X_batch)
                 train_acc = (y_pred.argmax(-1) == y_batch).float().mean().item()
                 loss = _func(y_pred, y_batch)
+                loss += _func(y_linear_pred, y_batch)
+                loss /= 2
                 assert torch.isfinite(loss)
                 l1_reg = 0
                 weight_dict = model.get_weights()
@@ -346,9 +347,9 @@ def run_sparse_feature_classification(alpha, X_train, y_train, X_test, y_test,
 
             if (e + 1) % eval_every_epoch == 0:
                 model.eval()
-                y_pred_valid = model(X_valid_ten).argmax(-1)
+                y_pred_valid = model(X_valid_ten)[1].argmax(-1)
                 valid_acc = (y_pred_valid == y_valid_ten).float().mean().item()
-                y_pred_test = model(X_test_ten).argmax(-1)
+                y_pred_test = model(X_test_ten)[1].argmax(-1)
                 metric['#labels'] = len(Counter(y_pred_test.cpu().numpy().tolist()))
                 test_acc = (y_pred_test == y_test_ten).float().mean().item()
                 metric['valid_acc'] = valid_acc
