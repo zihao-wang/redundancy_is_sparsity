@@ -12,8 +12,8 @@ from sklearn.model_selection import KFold, train_test_split
 from sklearn.svm import SVC
 
 from data import get_cancer_GDS
-from models import MLP, LinearRegression, SparseFeatureLinearRegression, SparseFeatureNet, SparseWeightNet
-from routines import run_classification
+from models import MLP, LinearRegression, SparseFeatureLinearRegression, SparseFeatureNet, SparseFeatureNetv2, SparseWeightNet
+from routines import run_classification, run_classification_sparse_feature_net
 
 
 parser = argparse.ArgumentParser()
@@ -68,6 +68,14 @@ def _some_net(NetClass, X_train, y_train, X_test, y_test, alpha, device, **kwarg
         device=device, **kwargs)
     return acc
 
+def _sparse_feature_net(NetClass, X_train, y_train, X_test, y_test, alpha, device, **kwargs):
+    input_dim = X_train.shape[1]
+    output_dim = max(np.max(y_train), np.max(y_test)) + 1
+    net = NetClass(input_dim, output_dim).to(device)
+    acc, metric_list = run_classification_sparse_feature_net(
+        alpha, X_train, y_train, X_test, y_test, net,
+        device=device, **kwargs)
+    return acc
 
 def evaluate_model(X_train, y_train, X_test, y_test, model_name, **kwargs):
     if model_name.lower() == 'logistic_regression':
@@ -75,7 +83,9 @@ def evaluate_model(X_train, y_train, X_test, y_test, model_name, **kwargs):
     elif model_name.lower() == 'mlp':
         acc = _some_net(MLP, X_train, y_train, X_test, y_test, **kwargs)
     elif model_name.lower() == 'sparse_feature_net':
-        acc = _some_net(SparseFeatureNet, X_train, y_train, X_test, y_test, **kwargs)
+        acc = _sparse_feature_net(SparseFeatureNet, X_train, y_train, X_test, y_test, **kwargs)
+    elif model_name.lower() == 'sparse_feature_net_v2':
+        acc = _sparse_feature_net(SparseFeatureNetv2, X_train, y_train, X_test, y_test, **kwargs)
     elif model_name.lower() == 'sparse_feature_linear':
         acc = _some_net(SparseFeatureLinearRegression, X_train, y_train, X_test, y_test, **kwargs)
     elif model_name.lower() == 'sparse_weight_net':

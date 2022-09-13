@@ -16,22 +16,44 @@
 # done
 
 
+# optname=SGD
+# model_name=sparse_feature_linear
+# for lr in 5e-1 3e-1 1e-1 5e-2 3e-2 1e-1
+# do
+#     # for alphacuda in "3e-1 cuda:0" "1e-1 cuda:1" "3e-2 cuda:2" "1e-2 cuda:3"
+#     for alphacuda in "6e-1 cuda:0" "7e-1 cuda:1" "8e-2 cuda:2" "9e-2 cuda:3"
+#     do
+#         set -- $alphacuda
+#         echo ${1} and $2
+#         python3 cancer_sparse_classification.py \
+#             --model_name=$model_name \
+#             --alpha=$1 \
+#             --optname=$optname \
+#             --lr=$lr \
+#             --device=$2 \
+#             --log_dir=output/cancer_${model_name}_alpha=${1}_${optname}_lr${lr}.log &
+#     done
+#     wait
+# done
+
 optname=SGD
-model_name=sparse_feature_linear
-for lr in 5e-1 3e-1 1e-1 5e-2 3e-2 1e-1
+model_name=sparse_feature_net_v2
+# for alphacuda in "4e-1 cuda:0" "3e-1 cuda:1" "2e-2 cuda:2" "1e-2 cuda:3"
+for alpha in .8 .6 .4 .2 .1 .08 .06 .04 .02
 do
     # for alphacuda in "3e-1 cuda:0" "1e-1 cuda:1" "3e-2 cuda:2" "1e-2 cuda:3"
-    for alphacuda in "5e-1 cuda:0" "4e-1 cuda:1" "2e-2 cuda:2" "6e-2 cuda:3"
+    # for lr in 1e-1 5e-2 1e-2 5e-3
+    for lr_cuda in "1e-1 cuda:0" "2e-1 cuda:1" "3e-1 cuda:2" "4e-1 cuda:3"
     do
-        set -- $alphacuda
-        echo ${1} and $2
+        set -- $lr_cuda
+        echo ${1} and ${2}
         python3 cancer_sparse_classification.py \
             --model_name=$model_name \
-            --alpha=$1 \
+            --alpha=$alpha \
             --optname=$optname \
-            --lr=$lr \
+            --lr=$1 \
             --device=$2 \
-            --log_dir=output/cancer_${model_name}_alpha=${1}_${optname}_lr${lr}.log &
+            --log_dir=output/cancer_${model_name}_alpha=${alpha}_${optname}_lr${1}.log &
     done
     wait
 done

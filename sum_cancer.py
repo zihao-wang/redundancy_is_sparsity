@@ -5,7 +5,7 @@ from collections import defaultdict
 
 
 if __name__ == "__main__":
-    input_file_prefix = "output/cancer_sparse_feature_linear"
+    input_file_prefix = "output/cancer_hsic_lasso"
     folder = os.path.dirname(input_file_prefix)
     prefix = os.path.basename(input_file_prefix)
     data = defaultdict(list)
@@ -21,4 +21,4 @@ if __name__ == "__main__":
                         for k in d:
                             data[k].append(d[k])
     df = pd.DataFrame(data)
-    df.to_csv('output/cancer_sparse_feature_linear.csv', index=False)
+    df.to_csv(f'output/{prefix}.csv', index=False)

@@ -118,7 +118,7 @@ class SparseFeatureLinearRegression(nn.Module):
 
     def get_weights(self):
         return {
-            "output_weight": self.output.weight * self.input_mask
+            "weights": self.output.weight * self.input_mask
         }
 
 
@@ -181,18 +181,42 @@ class SparseFeatureNet(nn.Module):
             hidden_dim=200,
     ):
         super(SparseFeatureNet, self).__init__()
-        self.input_mask = nn.Parameter(
-            torch.zeros([1, input_dim]).normal_(0, 1))
-        self.hidden = SpaRedLinear(input_dim, hidden_dim)
-        self.hidden_mask = nn.Parameter(
-            torch.zeros([1, hidden_dim]).normal_(0, 1))
+        self.input = SparseFeatureLinearRegression(input_dim, hidden_dim)
         self.output = SpaRedLinear(hidden_dim, output_dim)
 
     def forward(self, X, **kwargs):
-        X = torch.relu(self.hidden(X * self.input_mask))
-        X = self.output(X * self.hidden_mask)
+        X = torch.relu(self.input(X))
+        X = self.output(X)
         return X
 
     def get_weights(self):
-        return {'hidden_weights': self.hidden.weight * self.input_mask,
-                'output_weights': self.output.weight * self.hidden_mask}
+        return {'input_weights': self.input.get_weights()['weights'],
+                'output_weights': self.output.weight}
+
+
+class SparseFeatureNetv2(nn.Module):
+    def __init__(
+            self,
+            input_dim,
+            output_dim,
+            hidden_dim=200,
+    ):
+        super(SparseFeatureNetv2, self).__init__()
+        self.input_mask = nn.Parameter(torch.zeros([1, input_dim]).normal_(0, 1))
+        self.linear_output = nn.Linear(input_dim, output_dim, bias=False)
+        self.mlp_output = nn.Sequential(
+           nn.Linear(input_dim, hidden_dim),
+           nn.ReLU(),
+           nn.Linear(hidden_dim, hidden_dim),
+           nn.ReLU(),
+           nn.Linear(hidden_dim, output_dim),
+        )
+
+    def forward(self, X, **kwargs):
+        sparse_feature = self.input_mask * X
+        X1 = self.linear_output(sparse_feature)
+        X2 = self.mlp_output(sparse_feature)
+        return (X1 + X2) / 2
+
+    def get_weights(self):
+        return {'input_mask': self.input_mask}
