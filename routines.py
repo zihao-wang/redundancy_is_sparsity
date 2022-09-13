@@ -1,5 +1,6 @@
 import logging
 from collections import Counter
+from pickletools import optimize
 import time
 
 import torch
@@ -299,15 +300,16 @@ def run_sparse_feature_classification(alpha, X_train, y_train, X_test, y_test,
         optimizer_out = torch.optim.Adam(
             [{'params': model.mlp_output.parameters()}], lr=4e-3, weight_decay=1e-5)
     else:
-        optimizer_in = getattr(torch.optim, optname)(
-            model.parameters(), lr=lr, weight_decay=alpha)
+         optimizer_in = getattr(torch.optim, optname)(
+             model.parameters(), lr=lr, weight_decay=alpha)
+
 
     _func = torch.nn.CrossEntropyLoss()
     metric_list = []
 
     best_valid_acc = 0
     final_test_acc = 0
-    final_sparse_feature_rate = 0
+    final_features = 0
 
     t = time.time()
     with trange(epochs) as titer:
@@ -355,10 +357,8 @@ def run_sparse_feature_classification(alpha, X_train, y_train, X_test, y_test,
                 metric['valid_acc'] = valid_acc
                 metric['test_acc'] = test_acc
 
-                sparse_feature_index = (torch.abs(model.input_mask) < 1e-10).float()
-                sparse_feature_rate = torch.sum(sparse_feature_index) / sparse_feature_index.numel()
-                sparse_feature_rate = sparse_feature_rate.item()
-                metric['feat_rate'] = sparse_feature_rate
+                num_feat_select = (torch.abs(model.input_mask) > 1e-10).float().sum()
+                metric['#features'] = num_feat_select.item()
 
                 titer.set_postfix(metric)
                 metric_list.append(metric)
@@ -367,9 +367,9 @@ def run_sparse_feature_classification(alpha, X_train, y_train, X_test, y_test,
                 if valid_acc > best_valid_acc:
                     best_valid_acc = valid_acc
                     final_test_acc = test_acc
-                    final_sparse_feature_rate = sparse_feature_rate
+                    final_features = num_feat_select
 
-    return final_test_acc, final_sparse_feature_rate, metric_list
+    return final_test_acc, final_features, metric_list
 
 def run_l1_regression(alpha, x, y,
                       optname='SGD',

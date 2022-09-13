@@ -144,6 +144,7 @@ if __name__ == "__main__":
 
     logging.info(args)
     np.random.seed(111)
+    torch.manual_seed(111)
 
     for f in os.listdir('data'):
         if f.endswith('soft.gz') and args.dataset_name in f:

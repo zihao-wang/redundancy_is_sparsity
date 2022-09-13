@@ -39,11 +39,11 @@
 optname=SGD
 model_name=sparse_feature_net_v2
 # for alphacuda in "4e-1 cuda:0" "3e-1 cuda:1" "2e-2 cuda:2" "1e-2 cuda:3"
-for alpha in .8 .6 .4 .2 .1 .08 .06 .04 .02
+for alpha in 7 5 3 1
 do
     # for alphacuda in "3e-1 cuda:0" "1e-1 cuda:1" "3e-2 cuda:2" "1e-2 cuda:3"
     # for lr in 1e-1 5e-2 1e-2 5e-3
-    for lr_cuda in "1e-1 cuda:0" "2e-1 cuda:1" "3e-1 cuda:2" "4e-1 cuda:3"
+    for lr_cuda in "5e-2 cuda:0" "3e-2 cuda:1" "1e-2 cuda:2" "5e-3 cuda:3"
     do
         set -- $lr_cuda
         echo ${1} and ${2}

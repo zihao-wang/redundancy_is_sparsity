@@ -28,6 +28,7 @@ class LinearRegression(nn.Module, MyModelMixin):
             output_dim,
             bias=True):
         super(LinearRegression, self).__init__()
+        torch.manual_seed(111)
         self.linear = Linear(input_dim, output_dim, bias)
 
     def forward(self, X, **kwargs):
@@ -93,6 +94,7 @@ class SparedLinearRegression(nn.Module, MyModelMixin):
             output_dim,
             bias=False):
         super(SparedLinearRegression, self).__init__()
+        torch.manual_seed(111)
         self.linear = SpaRedLinear(input_dim, output_dim, bias)
 
     def forward(self, x):
@@ -108,6 +110,7 @@ class SparseFeatureLinearRegression(nn.Module):
             output_dim,
             bias=False):
         super(SparseFeatureLinearRegression, self).__init__()
+        torch.manual_seed(111)
         self.input_mask = nn.Parameter(torch.zeros([1, input_dim]).normal_(0, 1))
         self.output = nn.Linear(input_dim, output_dim, bias=bias)
 
@@ -131,6 +134,7 @@ class MLP(nn.Module):
             bias=False
     ):
         super(MLP, self).__init__()
+        torch.manual_seed(111)
         self.hidden = nn.Linear(input_dim, hidden_dim, bias=bias)
         self.output = nn.Linear(hidden_dim, output_dim, bias=bias)
 
@@ -156,6 +160,7 @@ class SparseWeightNet(nn.Module):
             hidden_dim,
     ):
         super(SparseWeightNet, self).__init__()
+        torch.manual_seed(111)
 
         self.input_layer = SpaRedLinear(input_dim, hidden_dim)
         # self.hidden_layer = SpaRedLinear(hidden_dim, hidden_dim)
@@ -181,6 +186,7 @@ class SparseFeatureNet(nn.Module):
             hidden_dim=200,
     ):
         super(SparseFeatureNet, self).__init__()
+        torch.manual_seed(111)
         self.input = SparseFeatureLinearRegression(input_dim, hidden_dim)
         self.output = SpaRedLinear(hidden_dim, output_dim)
 
@@ -202,6 +208,7 @@ class SparseFeatureNetv2(nn.Module):
             hidden_dim=200,
     ):
         super(SparseFeatureNetv2, self).__init__()
+        torch.manual_seed(111)
         self.input_mask = nn.Parameter(torch.zeros([1, input_dim]).normal_(0, 1))
         self.linear_output = nn.Linear(input_dim, output_dim, bias=False)
         self.linear_feature = nn.Linear(input_dim, hidden_dim, bias=False)
