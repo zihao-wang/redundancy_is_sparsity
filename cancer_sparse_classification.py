@@ -13,7 +13,7 @@ from sklearn.svm import SVC
 
 from data import get_cancer_GDS
 from models import MLP, LinearRegression, SparseFeatureLinearRegression, SparseFeatureNet, SparseFeatureNetv2, SparseWeightNet
-from routines import run_classification, run_classification_sparse_feature_net
+from routines import run_classification, run_sparse_feature_classification
 
 
 parser = argparse.ArgumentParser()
@@ -40,8 +40,7 @@ def _logistic_regression(X_train, y_train, X_test, y_test, **kwargs):
     clf.fit(X_train, y_train)
     y_pred = clf.predict(X_test)
     acc = accuracy_score(y_pred, y_test)
-    return acc
-
+    return {'acc': acc}
 
 def _hsic_lasso(X_train, y_train, X_test, y_test, num_feat, B, **kwargs):
     from pyHSICLasso import HSICLasso
@@ -56,8 +55,7 @@ def _hsic_lasso(X_train, y_train, X_test, y_test, num_feat, B, **kwargs):
     clf.fit(X_train_selected, y_train)
     y_pred = clf.predict(X_test_selected)
     acc = accuracy_score(y_pred, y_test)
-    return acc
-
+    return {'acc': acc}
 
 def _some_net(NetClass, X_train, y_train, X_test, y_test, alpha, device, **kwargs):
     input_dim = X_train.shape[1]
@@ -66,39 +64,55 @@ def _some_net(NetClass, X_train, y_train, X_test, y_test, alpha, device, **kwarg
     acc, metric_list = run_classification(
         alpha, X_train, y_train, X_test, y_test, net,
         device=device, **kwargs)
-    return acc
+    return {'acc': acc}
+
+def _sparse_feature_svm(NetClass, X_train, y_train, X_test, y_test, alpha, device, **kwargs):
+    input_dim = X_train.shape[1]
+    output_dim = max(np.max(y_train), np.max(y_test)) + 1
+    net = NetClass(input_dim, output_dim).to(device)
+    acc, sparse_feature_rate, metric_list = run_sparse_feature_classification(
+        alpha, X_train, y_train, X_test, y_test, net,
+        device=device, **kwargs)
+    mask = (net.input_mask > 1e-10).cpu().detach().numpy().reshape(-1)
+    X_train_selected = X_train[:, mask]
+    X_test_selected = X_test[:, mask]
+    clf = SVC()
+    clf.fit(X_train_selected, y_train)
+    y_pred = clf.predict(X_test_selected)
+    acc = accuracy_score(y_pred, y_test)
+    return {'acc': acc}
 
 def _sparse_feature_net(NetClass, X_train, y_train, X_test, y_test, alpha, device, **kwargs):
     input_dim = X_train.shape[1]
     output_dim = max(np.max(y_train), np.max(y_test)) + 1
     net = NetClass(input_dim, output_dim).to(device)
-    acc, metric_list = run_classification_sparse_feature_net(
+    acc, sparse_feature_rate, metric_list = run_sparse_feature_classification(
         alpha, X_train, y_train, X_test, y_test, net,
         device=device, **kwargs)
-    return acc
+    return {'acc': acc}
 
 def evaluate_model(X_train, y_train, X_test, y_test, model_name, **kwargs):
     if model_name.lower() == 'logistic_regression':
-        acc = _logistic_regression(X_train, y_train, X_test, y_test, **kwargs)
-    elif model_name.lower() == 'mlp':
-        acc = _some_net(MLP, X_train, y_train, X_test, y_test, **kwargs)
-    elif model_name.lower() == 'sparse_feature_net':
-        acc = _sparse_feature_net(SparseFeatureNet, X_train, y_train, X_test, y_test, **kwargs)
-    elif model_name.lower() == 'sparse_feature_net_v2':
-        acc = _sparse_feature_net(SparseFeatureNetv2, X_train, y_train, X_test, y_test, **kwargs)
-    elif model_name.lower() == 'sparse_feature_linear':
-        acc = _some_net(SparseFeatureLinearRegression, X_train, y_train, X_test, y_test, **kwargs)
-    elif model_name.lower() == 'sparse_weight_net':
-        acc = _some_net(SparseWeightNet, X_train, y_train, X_test, y_test, **kwargs)
-    elif model_name.lower() == 'sparse_weight_linear':
-        acc = _some_net(SparseWeightNet, X_train, y_train, X_test, y_test, **kwargs)
+        """logistic regression with L1 penalty"""
+        metric = _logistic_regression(X_train, y_train, X_test, y_test, **kwargs)
     elif model_name.lower() == 'hsiclasso':
-        acc = _hsic_lasso(X_train, y_train, X_test, y_test, **kwargs)
+        """first run hsic lasso then use the rbf svm classifier"""
+        metric = _hsic_lasso(X_train, y_train, X_test, y_test, **kwargs)
+    elif model_name.lower() == 'sparse_feature_linear':
+        """run the sparse feature logistic regression"""
+        metric = _some_net(SparseFeatureLinearRegression, X_train, y_train, X_test, y_test, **kwargs)
+    elif model_name.lower() == 'sparse_feature_linear_svm':
+        """first run the sparse feature logistic regression and then pick the feature for svc"""
+        metric = _sparse_feature_svm(SparseFeatureLinearRegression, X_train, y_train, X_test, y_test, **kwargs)
+    elif model_name.lower() == 'mlp':
+        """run a mlp"""
+        metric = _some_net(MLP, X_train, y_train, X_test, y_test, **kwargs)
+    elif model_name.lower() == 'sparse_feature_net_v2':
+        """run a joint trained feature selection and end to end network"""
+        metric = _sparse_feature_net(SparseFeatureNetv2, X_train, y_train, X_test, y_test, **kwargs)
     else:
         raise NotImplementedError
-
-    return acc
-
+    return metric
 
 def multi_trials_model(X, y, model_name, num_trials=100, **kwargs):
     acc_list = []
@@ -106,21 +120,17 @@ def multi_trials_model(X, y, model_name, num_trials=100, **kwargs):
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, shuffle=True)
         t0 = time.time()
-        acc = evaluate_model(X_train, y_train, X_test,
+        metric = evaluate_model(X_train, y_train, X_test,
                              y_test, model_name, **kwargs)
         dt = time.time() - t0
-        metric = {
-            'acc': acc,
-            'dt': dt
-        }
+        metric['dt'] = dt
         logging.info(f"random trail {i+1} of {num_trials}:{metric}")
-        acc_list.append(acc)
-    ret = {
+        acc_list.append(metric['acc'])
+    return {
         'model_name': model_name,
         'mean_acc': np.mean(acc_list),
         'var_acc': np.std(acc_list),
     }
-    return ret
 
 
 if __name__ == "__main__":
@@ -133,14 +143,6 @@ if __name__ == "__main__":
                         level=logging.INFO)
 
     logging.info(args)
-
-    model_name_dist = {
-        'hsiclasso': {
-            "num_feat": [1, 5, 10, 100]
-        },
-        'logisticregression': {},
-        'sparednet': {}}
-
     np.random.seed(111)
 
     for f in os.listdir('data'):

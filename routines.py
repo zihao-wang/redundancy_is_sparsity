@@ -195,6 +195,7 @@ def run_classification(alpha, X_train, y_train, X_test, y_test,
     t = time.time()
     with trange(epochs) as titer:
         for e in titer:
+            model.train()
             metric = {}
             total_loss = 0
             total_ce = 0
@@ -225,6 +226,7 @@ def run_classification(alpha, X_train, y_train, X_test, y_test,
             metric['time'] = time.time() - t
 
             if (e + 1) % eval_every_epoch == 0:
+                model.eval()
                 y_pred_valid = model(X_valid_ten).argmax(-1)
                 valid_acc = (y_pred_valid == y_valid_ten).float().mean().item()
                 y_pred_test = model(X_test_ten).argmax(-1)
@@ -253,7 +255,7 @@ def run_classification(alpha, X_train, y_train, X_test, y_test,
 
 
 
-def run_classification_sparse_feature_net(alpha, X_train, y_train, X_test, y_test,
+def run_sparse_feature_classification(alpha, X_train, y_train, X_test, y_test,
                         net=None,
                         optname='SGD',
                         epochs=10000,
@@ -296,15 +298,20 @@ def run_classification_sparse_feature_net(alpha, X_train, y_train, X_test, y_tes
 
         optimizer_out = torch.optim.Adam(
             [{'params': model.mlp_output.parameters()}], lr=4e-3, weight_decay=1e-5)
+    else:
+        optimizer_in = getattr(torch.optim, optname)(
+            model.parameters(), lr=lr, weight_decay=alpha)
 
     _func = torch.nn.CrossEntropyLoss()
     metric_list = []
 
     best_valid_acc = 0
     final_test_acc = 0
+    final_sparse_feature_rate = 0
 
     t = time.time()
     with trange(epochs) as titer:
+        model.train()
         for e in titer:
             metric = {}
             total_loss = 0
@@ -338,6 +345,7 @@ def run_classification_sparse_feature_net(alpha, X_train, y_train, X_test, y_tes
             metric['time'] = time.time() - t
 
             if (e + 1) % eval_every_epoch == 0:
+                model.eval()
                 y_pred_valid = model(X_valid_ten).argmax(-1)
                 valid_acc = (y_pred_valid == y_valid_ten).float().mean().item()
                 y_pred_test = model(X_test_ten).argmax(-1)
@@ -345,13 +353,10 @@ def run_classification_sparse_feature_net(alpha, X_train, y_train, X_test, y_tes
                 metric['valid_acc'] = valid_acc
                 metric['test_acc'] = test_acc
 
-                total_numel = 0
-                non_zero_numel = 0
-                weight_dict = model.get_weights()
-                for k, w in weight_dict.items():
-                    total_numel += w.numel()
-                    non_zero_numel += (torch.abs(w) > 1e-20).float().sum()
-                metric['compression'] = (total_numel / non_zero_numel).item()
+                sparse_feature_index = (torch.abs(model.input_mask) < 1e-10).float()
+                sparse_feature_rate = torch.sum(sparse_feature_index) / sparse_feature_index.numel()
+                sparse_feature_rate = sparse_feature_rate.item()
+                metric['sparse_feature_rate'] = sparse_feature_rate
 
                 titer.set_postfix(metric)
                 metric_list.append(metric)
@@ -360,9 +365,9 @@ def run_classification_sparse_feature_net(alpha, X_train, y_train, X_test, y_tes
                 if valid_acc > best_valid_acc:
                     best_valid_acc = valid_acc
                     final_test_acc = test_acc
+                    final_sparse_feature_rate = sparse_feature_rate
 
-
-    return final_test_acc, metric_list
+    return final_test_acc, final_sparse_feature_rate, metric_list
 
 def run_l1_regression(alpha, x, y,
                       optname='SGD',

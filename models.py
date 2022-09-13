@@ -217,7 +217,10 @@ class SparseFeatureNetv2(nn.Module):
         X1 = self.linear_output(sparse_feature)
         X2 = self.linear_feature(sparse_feature)
         X2 = self.mlp_output(X2)
-        return (X1 + X2) / 2
+        if self.training:
+            return (X1 + X2) / 2
+        else:
+            return X2
 
     def get_weights(self):
         return {'input_mask': self.input_mask}
