@@ -290,11 +290,12 @@ def run_classification_sparse_feature_net(alpha, X_train, y_train, X_test, y_tes
             model.output.parameters(), lr=lr, weight_decay=1e-5)
     elif isinstance(model, SparseFeatureNetv2):
         optimizer_in = getattr(torch.optim, optname)(
-            [{'params': model.input_mask}], lr=lr, weight_decay=alpha)
+            [{'params': model.input_mask},
+            {'params': model.linear_output.parameters()},
+            {'params': model.linear_feature.parameters()}], lr=lr, weight_decay=alpha)
 
         optimizer_out = torch.optim.Adam(
-            [{'params': model.linear_output.parameters()},
-             {'params': model.mlp_output.parameters()}], lr=1e-4, weight_decay=1e-5)
+            [{'params': model.mlp_output.parameters()}], lr=4e-3, weight_decay=1e-5)
 
     _func = torch.nn.CrossEntropyLoss()
     metric_list = []
