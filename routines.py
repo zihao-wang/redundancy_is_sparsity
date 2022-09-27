@@ -1,9 +1,9 @@
 import logging
 from collections import Counter
-from pickletools import optimize
 import time
 
 import torch
+import numpy as np
 from tqdm import trange
 from sklearn.linear_model import Lasso, LassoLars
 from sklearn.model_selection import train_test_split
@@ -46,6 +46,86 @@ def run_lasso(alpha, x, y, method='default', **kwargs):
 
     return {'time': t,
             'weights': weights}
+
+def run_rs_regression_v2(alpha, x, y,
+                      optname='SGD',
+                      epochs=200,
+                      batch_size=512,
+                      lr=1e-4,
+                      device='cuda:0',
+                      tol=1e-6,
+                      eval_every_epoch=100):
+
+    x_tensor = torch.tensor(x, dtype=torch.float32, device=device)
+    y_tensor = torch.tensor(y, dtype=torch.float32, device=device)
+    dataset = torch.utils.data.TensorDataset(x_tensor, y_tensor)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size)
+    _, predictor_dim = x.shape
+    _, respond_dim = y.shape
+    model = SparedLinearRegression(input_dim=predictor_dim,
+                                   output_dim=respond_dim,
+                                   bias=True)
+    # using weight decay for L2 regularization
+    model.to(device)
+    optimizer = getattr(torch.optim, optname)(
+        model.parameters(), lr=lr, weight_decay=alpha)
+
+    metric_list = []
+    last_loss = -1
+
+    t = time.time()
+    with trange(epochs) as titer:
+        for e in titer:
+            metric = {}
+            total_loss = 0
+            for x_batch, y_batch in dataloader:
+                y_pred = model(x_batch)
+                weight_dict = model.get_weights()
+                l1_reg = 0
+                loss = 0
+                for k, w in weight_dict.items():
+                    l1_reg += torch.norm(w, p=1)
+                _func = torch.nn.MSELoss()
+                loss += _func(y_pred, y_batch) / 2
+                assert not torch.isnan(loss)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item() + alpha * l1_reg.item()
+
+            epoch_loss = total_loss / len(dataloader)
+            metric['epoch_loss'] = epoch_loss
+            metric['epoch'] = e + 1
+            metric['time'] = time.time() - t
+
+
+            if e % eval_every_epoch == 0:
+                zero6 = 0
+                zero12 = 0
+                total = 0
+                this_loss = loss.item()
+                weight_dict = model.get_weights()
+                for k, w in weight_dict.items():
+                    total += w.numel()
+                    zero6 = torch.sum(torch.abs(w) < 1e-6)
+                    zero12 = torch.sum(torch.abs(w) < 1e-12)
+
+                sparse6 = zero6 / total
+                sparse12 = zero12 / total
+
+                metric['sparse6'] = sparse6
+                metric['sparse12'] = sparse12
+                err1 = torch.abs(sparse6 - sparse12)
+                err2 = np.abs(this_loss - last_loss)
+                if (err1 < tol) and (err2 < tol):
+                    print(err1, err2)
+                    break
+
+                last_loss = this_loss
+
+    return {'time': time.time() - t,
+            'weights': model.get_weights()['weight'].cpu().detach().numpy().T,
+            'metric_list': metric_list}
 
 
 def run_rs_regression(alpha, x, y,
