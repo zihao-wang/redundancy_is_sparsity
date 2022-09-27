@@ -5,7 +5,7 @@ from collections import defaultdict
 
 
 if __name__ == "__main__":
-    input_file_prefix = "output/cancer_hsic_lasso"
+    input_file_prefix = "output/cancer_sparse_feature_linear"
     folder = os.path.dirname(input_file_prefix)
     prefix = os.path.basename(input_file_prefix)
     data = defaultdict(list)

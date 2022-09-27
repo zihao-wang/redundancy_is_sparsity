@@ -300,8 +300,9 @@ def run_sparse_feature_classification(alpha, X_train, y_train, X_test, y_test,
         optimizer_out = torch.optim.Adam(
             [{'params': model.mlp_output.parameters()}], lr=4e-3, weight_decay=1e-5)
     else:
-         optimizer_in = getattr(torch.optim, optname)(
+        optimizer_in = getattr(torch.optim, optname)(
              model.parameters(), lr=lr, weight_decay=alpha)
+        optimizer_out = None
 
 
     _func = torch.nn.CrossEntropyLoss()
@@ -334,11 +335,11 @@ def run_sparse_feature_classification(alpha, X_train, y_train, X_test, y_test,
                 total_l1_reg += l1_reg
                 total_loss += loss + alpha * l1_reg
                 optimizer_in.zero_grad()
-                optimizer_out.zero_grad()
+                if optimizer_out: optimizer_out.zero_grad()
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
                 optimizer_in.step()
-                optimizer_out.step()
+                if optimizer_out: optimizer_out.step()
 
             metric['cross_entropy'] = total_ce.item() / len(dataloader)
             metric['train_acc'] = train_acc
