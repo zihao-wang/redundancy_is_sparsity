@@ -205,7 +205,7 @@ class SparseFeatureNetv2(nn.Module):
             self,
             input_dim,
             output_dim,
-            hidden_dim=200,
+            hidden_dim=1024,
     ):
         super(SparseFeatureNetv2, self).__init__()
         torch.manual_seed(111)

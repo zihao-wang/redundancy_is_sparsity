@@ -59,6 +59,11 @@ def get_cancer_GDS(filepath):
             X.append(_x)
             y.append(_y)
 
+    from collections import Counter
+    yc = Counter(y)
+    for k, c in yc.most_common(1):
+        logging.info(f"most common label {k}: percent {c / len(y)}")
+
     X_arr = np.concatenate(X, axis=0).astype('float32')
     X_arr = np.nan_to_num(X_arr, nan=0)
     y_arr = np.asarray(y).astype('int64')
