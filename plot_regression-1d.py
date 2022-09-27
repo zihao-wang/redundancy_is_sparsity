@@ -113,7 +113,7 @@ def plot_training_trajectory(pickle_file_dict, fig_folder):
     for a in tqdm(alpha):
         alpha_ratio = a / np.max(alpha)
         alpha_str = rf" ($\alpha={alpha_ratio:.2f} \alpha_m$)"
-        fig, (axu, axl) = plt.subplots(nrows=2, figsize=(4, 5))
+        fig, axu = plt.subplots(figsize=(4, 3))
         for label in metric_trajectory_dict:
             prefix = label.split(':')[0]
             metric_trajectory = metric_trajectory_dict[label]
@@ -134,9 +134,9 @@ def plot_training_trajectory(pickle_file_dict, fig_folder):
                         **format_dict[f'{prefix}:zero_rate12'.lower()])
             # axr.plot(epoch, mse_loss, linestyle="dashed", label=f"{prefix}:MSE")
             # plot L1 norm
-            axl.plot(epoch, l1_loss,
-                        label=prefix,
-                        **format_dict[f'{prefix}:l1'.lower()])
+            # axl.plot(epoch, l1_loss,
+                        # label=prefix,
+                        # **format_dict[f'{prefix}:l1'.lower()])
         axu.set_xlabel("Step")
         axu.set_xscale('log')
         axu.set_ylabel("Zero Rate")
@@ -144,12 +144,12 @@ def plot_training_trajectory(pickle_file_dict, fig_folder):
         axu.set_title("Zero rate" + alpha_str)
         axu.legend()
 
-        axl.set_xlabel("Step")
-        axl.set_xscale('log')
-        axl.set_ylabel(r"$|W|_1$")
-        axl.set_yscale('log')
-        axl.set_title("L1-norm of weights" + alpha_str)
-        axl.legend()
+        # axl.set_xlabel("Step")
+        # axl.set_xscale('log')
+        # axl.set_ylabel(r"$|W|_1$")
+        # axl.set_yscale('log')
+        # axl.set_title("L1-norm of weights" + alpha_str)
+        # axl.legend()
 
         fig.tight_layout()
         fig.savefig(os.path.join(fig_folder, f"alpha={alpha_ratio:.4f}.pdf"))

@@ -96,7 +96,7 @@ def get_lasso_loss(input_dim, output_dim, method, alpha):
 def plot_time_vs_inputdim():
     for a in alphas:
         for outdim in output_dims:
-            plt.figure(figsize=(6, 2.5))
+            plt.figure(figsize=(5, 2.5))
             y = [get_lasso_time(indim, outdim, 'lasso', a) for indim in input_dims]
             plt.plot(input_dims, y, "r-", label='Lasso')
 
@@ -114,7 +114,7 @@ def plot_time_vs_inputdim():
             plt.ylabel('Time')
             plt.xscale('log')
             plt.yscale('log')
-            plt.title(rf'$\alpha={a / 5} \alpha_m$, Output dimension={outdim}')
+            # plt.title(rf'$\alpha={a / 5} \alpha_m$, Output dimension={outdim}')
             plt.legend(bbox_to_anchor=(1.1, 1))
             plt.tight_layout()
             plt.savefig(f"output/plots/regression-general/alpha={a}_output_dim={outdim}.pdf")
@@ -125,7 +125,7 @@ def plot_time_vs_alpha():
     x = x / np.max(alphas)
     for outdim in output_dims:
         for indim in input_dims:
-            plt.figure(figsize=(6, 2.5))
+            plt.figure(figsize=(5, 2.5))
             y = [get_lasso_time(indim, outdim, 'lasso', a) for a in alphas]
             plt.plot(x, y, "r-", label='Lasso')
 
@@ -142,7 +142,7 @@ def plot_time_vs_alpha():
             plt.xlabel(r'$\alpha/\alpha_m$')
             plt.ylabel('Time')
             plt.yscale('log')
-            plt.title(rf'Input dimension={indim}, Output dimension={outdim}')
+            # plt.title(rf'Input dimension={indim}, Output dimension={outdim}')
             plt.legend(bbox_to_anchor=(1.1, 1))
             plt.tight_layout()
             plt.savefig(f"output/plots/regression-general/indim={indim}_output_dim={outdim}.pdf")
